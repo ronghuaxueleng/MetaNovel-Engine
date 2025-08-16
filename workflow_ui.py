@@ -267,10 +267,14 @@ def generate_story_outline(dm):
     # 直接调用同步函数并显示进度消息
     ui.print_info("正在生成故事大纲...")
     
+    # 获取canon内容
+    canon_content = dm.get_canon_content()
+    
     new_outline = llm_service.generate_story_outline(
         one_line_theme, 
         paragraph_theme, 
         characters_info, 
+        canon_content,
         user_prompt or ""
     )
 
@@ -382,10 +386,14 @@ def generate_chapter_outline(dm, current_chapters):
     # 直接调用同步函数并显示进度消息
     ui.print_info("正在生成分章细纲...")
     
+    # 获取canon内容
+    canon_content = dm.get_canon_content()
+    
     new_chapters_result = llm_service.generate_chapter_outline(
         one_line_theme, 
         story_outline, 
         characters_info, 
+        canon_content,
         user_prompt or ""
     )
 
@@ -597,10 +605,14 @@ def generate_all_summaries(dm, chapters, summaries):
         ui.print_info(f"正在生成第{order}章概要: {title}... ({i}/{len(chapters_to_generate)})")
         
         try:
+            # 获取canon内容
+            canon_content = dm.get_canon_content()
+            
             summary = llm_service.generate_chapter_summary(
                 chapter, 
                 order, 
                 context, 
+                canon_content,
                 user_prompt
             )
             
@@ -686,10 +698,14 @@ def generate_single_summary(dm, chapters, summaries):
             
             # 直接调用同步函数
             ui.print_info(f"正在为'{chapter.get('title')}'生成概要...")
+            # 获取canon内容
+            canon_content = dm.get_canon_content()
+            
             new_summary = llm_service.generate_chapter_summary(
                 chapter,
                 chapter['order'],
                 context,
+                canon_content,
                 user_prompt
             )
 
@@ -829,11 +845,15 @@ def generate_all_novel_chapters(dm, chapters, summaries, novel_chapters):
         ui.print_info(f"正在生成第{order}章: {title}... ({i}/{len(chapters_to_generate)})")
         
         try:
+            # 获取canon内容
+            canon_content = dm.get_canon_content()
+            
             content = llm_service.generate_novel_chapter_with_refinement(
                 chapter, 
                 summaries.get(f"chapter_{order}"), 
                 order, 
                 context, 
+                canon_content,
                 user_prompt
             )
             
@@ -893,11 +913,15 @@ def generate_single_novel_chapter(dm, chapters, summaries, novel_chapters):
 
             # 直接调用同步函数
             ui.print_info(f"正在生成'{chapter.get('title', '无标题')}'...")
+            # 获取canon内容
+            canon_content = dm.get_canon_content()
+            
             content = llm_service.generate_novel_chapter_with_refinement(
                 chapter, 
                 summaries.get(chapter_key), 
                 order, 
                 context, 
+                canon_content,
                 user_prompt
             )
 

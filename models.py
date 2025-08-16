@@ -136,6 +136,39 @@ class ChapterOutline(BaseModel):
         return len(self.chapters)
 
 
+class CanonBible(BaseModel):
+    """创作规范(Canon Bible)数据模型"""
+    model_config = ConfigDict(
+        json_encoders={datetime: lambda dt: dt.isoformat()},
+        str_strip_whitespace=True
+    )
+    
+    # 基础信息
+    one_line_theme: str = Field(..., description="一句话主题")
+    selected_genre: str = Field(..., description="选定体裁")
+    audience_and_tone: str = Field(default="", description="目标读者与语域偏好")
+    
+    # Canon内容（JSON字符串格式存储）
+    canon_content: str = Field(..., description="Canon内容的JSON字符串")
+    
+    # 元数据
+    created_at: Optional[datetime] = Field(default_factory=datetime.now, description="创建时间")
+    updated_at: Optional[datetime] = Field(default_factory=datetime.now, description="更新时间")
+    
+    @property
+    def canon_dict(self) -> Dict[str, Any]:
+        """将canon内容解析为字典"""
+        try:
+            return json.loads(self.canon_content)
+        except json.JSONDecodeError:
+            return {}
+    
+    def update_canon_content(self, canon_dict: Dict[str, Any]):
+        """更新canon内容"""
+        self.canon_content = json.dumps(canon_dict, ensure_ascii=False, indent=2)
+        self.updated_at = datetime.now()
+
+
 class WorldSettings(BaseModel):
     """世界设定数据模型"""
     characters: Dict[str, Character] = Field(default_factory=dict, description="角色设定")
@@ -161,6 +194,7 @@ class ProjectData(BaseModel):
         json_encoders={datetime: lambda dt: dt.isoformat()}
     )
     
+    canon_bible: Optional[CanonBible] = None
     theme_one_line: Optional[ThemeOneLine] = None
     theme_paragraph: Optional[ThemeParagraph] = None
     story_outline: Optional[StoryOutline] = None
@@ -175,6 +209,7 @@ class ProjectData(BaseModel):
     def completion_status(self) -> Dict[str, bool]:
         """获取项目完成状态"""
         return {
+            "canon_bible": self.canon_bible is not None,
             "theme_one_line": self.theme_one_line is not None,
             "theme_paragraph": self.theme_paragraph is not None,
             "story_outline": self.story_outline is not None,

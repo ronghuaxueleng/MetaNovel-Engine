@@ -174,7 +174,11 @@ def create_new_project():
         # 询问是否切换到新项目
         if ui.confirm("是否切换到新创建的项目？", default=True):
             project_data_manager.switch_project(project_name.strip())
-            console.print(f"[green]已切换到项目 '{display_name or project_name}'[/green]")
+            ui.print_success(f"已切换到项目: 《{display_name or project_name}》")
+            
+            # 询问是否立即生成Canon Bible
+            if ui.confirm("是否现在生成项目的Canon Bible（创作规范）？", default=True):
+                generate_canon_bible_for_new_project()
     else:
         console.print("[red]❌ 项目创建失败[/red]")
 
@@ -336,5 +340,68 @@ def edit_project():
         project_data_manager.refresh_data_manager()
     else:
         ui.print_error("❌ 更新项目信息失败")
+    
+    ui.pause()
+
+
+def generate_canon_bible_for_new_project():
+    """为新创建的项目生成Canon Bible"""
+    from llm_service import llm_service
+    
+    console.print(Panel("📖 生成Canon Bible（创作规范）", border_style="cyan"))
+    
+    # 收集基本信息
+    one_line_theme = ui.prompt("请输入您的一句话小说主题")
+    if not one_line_theme:
+        ui.print_warning("操作已取消")
+        return
+    
+    selected_genre = ui.prompt("请输入小说体裁（如：科幻、奇幻、悬疑、情感等）")
+    if not selected_genre:
+        ui.print_warning("操作已取消")
+        return
+    
+    audience_and_tone = ui.prompt("请输入目标读者与语域偏好（可选）", default="")
+    
+    # 检查AI服务是否可用
+    if not llm_service.is_available():
+        ui.print_error("AI服务不可用，请检查配置。")
+        ui.pause()
+        return
+    
+    # 生成Canon Bible
+    ui.print_info("正在生成Canon Bible，请稍候...")
+    
+    try:
+        canon_result = llm_service.generate_canon_bible(
+            one_line_theme=one_line_theme,
+            selected_genre=selected_genre,
+            audience_and_tone=audience_and_tone
+        )
+        
+        if canon_result:
+            # 保存Canon Bible到数据管理器
+            dm = project_data_manager.get_data_manager()
+            canon_data = {
+                "one_line_theme": one_line_theme,
+                "selected_genre": selected_genre,
+                "audience_and_tone": audience_and_tone,
+                "canon_content": canon_result if isinstance(canon_result, str) else str(canon_result)
+            }
+            
+            if dm.write_canon_bible(canon_data):
+                ui.print_success("✅ Canon Bible 生成并保存成功！")
+                
+                # 显示生成的内容概览
+                console.print("\n[cyan]生成的Canon Bible概览：[/cyan]")
+                content_preview = canon_result[:200] + "..." if len(str(canon_result)) > 200 else str(canon_result)
+                console.print(f"[dim]{content_preview}[/dim]")
+            else:
+                ui.print_error("Canon Bible 生成成功但保存失败")
+        else:
+            ui.print_error("Canon Bible 生成失败")
+            
+    except Exception as e:
+        ui.print_error(f"生成Canon Bible时出错: {e}")
     
     ui.pause() 

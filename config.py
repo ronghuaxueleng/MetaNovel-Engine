@@ -217,6 +217,7 @@ DEFAULT_RETRY_CONFIG = {
 # --- 文件路径配置 ---
 # 注意：这是默认配置，多项目模式下使用get_project_paths()生成动态路径
 FILE_PATHS = {
+    "canon_bible": META_DIR / "canon_bible.json",
     "theme_one_line": META_DIR / "theme_one_line.json",
     "theme_paragraph": META_DIR / "theme_paragraph.json", 
     "characters": META_DIR / "characters.json",
@@ -254,6 +255,7 @@ def get_project_paths(project_path: Optional[Path] = None) -> Dict[str, Path]:
     return {
         "meta_dir": meta_dir,
         "backup_dir": backup_dir,
+        "canon_bible": meta_dir / "canon_bible.json",
         "theme_one_line": meta_dir / "theme_one_line.json",
         "theme_paragraph": meta_dir / "theme_paragraph.json",
         "characters": meta_dir / "characters.json",

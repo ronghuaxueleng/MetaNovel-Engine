@@ -95,6 +95,48 @@ class DataManager:
         """列出字典类型的JSON文件中的所有项目"""
         return self.read_json_file(file_path)
     
+    # ===== Canon Bible相关 =====
+    def read_canon_bible(self):
+        """读取Canon Bible数据"""
+        if "canon_bible" not in self.file_paths:
+            # 如果file_paths中没有canon_bible，添加它
+            canon_file = self.file_paths["meta_dir"] / "canon_bible.json"
+            return self.read_json_file(canon_file)
+        return self.read_json_file(self.file_paths["canon_bible"])
+    
+    def write_canon_bible(self, canon_data):
+        """写入Canon Bible数据"""
+        if "canon_bible" not in self.file_paths:
+            # 如果file_paths中没有canon_bible，添加它
+            canon_file = self.file_paths["meta_dir"] / "canon_bible.json"
+        else:
+            canon_file = self.file_paths["canon_bible"]
+        
+        data = {
+            "one_line_theme": canon_data.get("one_line_theme", ""),
+            "selected_genre": canon_data.get("selected_genre", ""),
+            "audience_and_tone": canon_data.get("audience_and_tone", ""),
+            "canon_content": canon_data.get("canon_content", "{}"),
+            "created_at": canon_data.get("created_at", datetime.now().isoformat()),
+            "updated_at": datetime.now().isoformat()
+        }
+        return self.write_json_file(canon_file, data)
+    
+    def delete_canon_bible(self):
+        """删除Canon Bible数据"""
+        if "canon_bible" not in self.file_paths:
+            canon_file = self.file_paths["meta_dir"] / "canon_bible.json"
+        else:
+            canon_file = self.file_paths["canon_bible"]
+        return self.write_json_file(canon_file, {})
+    
+    def get_canon_content(self):
+        """获取Canon内容的JSON字符串，用于传递给LLM"""
+        canon_data = self.read_canon_bible()
+        if canon_data and "canon_content" in canon_data:
+            return canon_data["canon_content"]
+        return "{}"
+    
     # ===== 主题相关 =====
     def read_theme_one_line(self):
         """读取一句话主题数据（支持新旧格式）"""

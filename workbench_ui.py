@@ -111,60 +111,60 @@ def handle_canon_bible_management():
                 status_text = "❌ 未设置"
                 console.print(f"[cyan]当前Canon状态:[/cyan] {status_text}\n")
             
-            menu_options = [
-                "查看Canon Bible详情",
-                "生成新的Canon Bible（快速模式）",
-                "生成新的Canon Bible（详细配置）",
-                "编辑现有Canon Bible",
-                "重新生成Canon Bible",
-                "删除Canon Bible",
-                "返回工作台"
-            ]
+            # 根据是否已有Canon调整菜单选项
+            if canon_data and canon_data.get("canon_content"):
+                # 已有Canon的菜单
+                menu_options = [
+                    "查看Canon Bible详情",
+                    "编辑现有Canon Bible",
+                    "重新生成Canon Bible（快速模式）",
+                    "重新生成Canon Bible（详细配置）",
+                    "删除Canon Bible",
+                    "返回工作台"
+                ]
+            else:
+                # 没有Canon的菜单
+                menu_options = [
+                    "生成新的Canon Bible（快速模式）",
+                    "生成新的Canon Bible（详细配置）",
+                    "返回工作台"
+                ]
             
             choice = ui.display_menu(title, menu_options)
             
-            if choice == '1':
-                view_canon_bible_details(dm, canon_data)
-            elif choice == '2':
-                # 快速模式
-                if canon_data and canon_data.get("canon_content"):
-                    if ui.confirm("已存在Canon Bible，是否覆盖？"):
-                        generate_canon_bible_interactive(dm, detailed_mode=False)
-                else:
-                    generate_canon_bible_interactive(dm, detailed_mode=False)
-            elif choice == '3':
-                # 详细配置模式
-                if canon_data and canon_data.get("canon_content"):
-                    if ui.confirm("已存在Canon Bible，是否覆盖？"):
-                        generate_canon_bible_interactive(dm, detailed_mode=True)
-                else:
-                    generate_canon_bible_interactive(dm, detailed_mode=True)
-            elif choice == '4':
-                # 编辑现有Canon
-                if canon_data and canon_data.get("canon_content"):
+            if canon_data and canon_data.get("canon_content"):
+                # 已有Canon的选择逻辑
+                if choice == '1':
+                    view_canon_bible_details(dm, canon_data)
+                elif choice == '2':
+                    # 编辑现有Canon
                     edit_canon_bible_interactive(dm, canon_data)
-                else:
-                    ui.print_warning("尚未设置Canon Bible，请先生成。")
-                    ui.pause()
-            elif choice == '5':
-                # 重新生成
-                if canon_data and canon_data.get("canon_content"):
-                    generate_canon_bible_interactive(dm, detailed_mode=False)
-                else:
-                    ui.print_warning("尚未设置Canon Bible，请先生成。")
-                    ui.pause()
-            elif choice == '6':
-                # 删除
-                if canon_data and canon_data.get("canon_content"):
+                elif choice == '3':
+                    # 重新生成（快速模式）
+                    if ui.confirm("确定要重新生成Canon Bible吗？当前内容将被覆盖。"):
+                        generate_canon_bible_interactive(dm, detailed_mode=False)
+                elif choice == '4':
+                    # 重新生成（详细配置）
+                    if ui.confirm("确定要重新生成Canon Bible吗？当前内容将被覆盖。"):
+                        generate_canon_bible_interactive(dm, detailed_mode=True)
+                elif choice == '5':
+                    # 删除
                     if ui.confirm("确定要删除Canon Bible吗？此操作不可恢复。"):
                         dm.delete_canon_bible()
                         ui.print_success("Canon Bible已删除。")
                         ui.pause()
-                else:
-                    ui.print_warning("没有Canon Bible可删除。")
-                    ui.pause()
-            elif choice == '0':
-                break
+                elif choice == '0':
+                    break
+            else:
+                # 没有Canon的选择逻辑
+                if choice == '1':
+                    # 生成新的（快速模式）
+                    generate_canon_bible_interactive(dm, detailed_mode=False)
+                elif choice == '2':
+                    # 生成新的（详细配置）
+                    generate_canon_bible_interactive(dm, detailed_mode=True)
+                elif choice == '0':
+                    break
                 
     except KeyboardInterrupt:
         raise

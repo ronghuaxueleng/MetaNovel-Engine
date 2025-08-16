@@ -178,7 +178,10 @@ def create_new_project():
             
             # 询问是否立即生成Canon Bible
             if ui.confirm("是否现在生成项目的Canon Bible（创作规范）？", default=True):
-                generate_canon_bible_for_new_project()
+                # 询问生成模式
+                mode_choice = ui.prompt("选择生成模式：\n1. 快速模式（仅基础信息）\n2. 详细配置模式\n请选择 (1/2)", default="1")
+                detailed_mode = mode_choice == "2"
+                generate_canon_bible_for_new_project(detailed_mode)
     else:
         console.print("[red]❌ 项目创建失败[/red]")
 
@@ -344,11 +347,12 @@ def edit_project():
     ui.pause()
 
 
-def generate_canon_bible_for_new_project():
+def generate_canon_bible_for_new_project(detailed_mode=False):
     """为新创建的项目生成Canon Bible"""
     from llm_service import llm_service
     
-    console.print(Panel("📖 生成Canon Bible（创作规范）", border_style="cyan"))
+    mode_text = "详细配置" if detailed_mode else "快速"
+    console.print(Panel(f"📖 生成Canon Bible（{mode_text}模式）", border_style="cyan"))
     
     # 收集基本信息
     one_line_theme = ui.prompt("请输入您的一句话小说主题")
@@ -363,6 +367,41 @@ def generate_canon_bible_for_new_project():
     
     audience_and_tone = ui.prompt("请输入目标读者与语域偏好（可选）", default="")
     
+    # 详细配置模式：收集更多信息
+    additional_requirements = ""
+    if detailed_mode:
+        console.print("\n[cyan]详细配置选项（可选，直接回车跳过）：[/cyan]")
+        
+        # 语调偏好
+        tone_preference = ui.prompt("语调偏好（如：冷静克制/激情澎湃/幽默诙谐等）", default="")
+        
+        # 视角偏好
+        pov_preference = ui.prompt("视角偏好（如：第一人称/第三人称近距/全知视角等）", default="")
+        
+        # 节奏偏好
+        rhythm_preference = ui.prompt("节奏偏好（如：快节奏/慢热型/张弛有度等）", default="")
+        
+        # 世界观设定
+        world_setting = ui.prompt("世界观特殊设定（如：未来科技/魔法体系/现实主义等）", default="")
+        
+        # 禁用元素
+        avoid_elements = ui.prompt("想要避免的写作元素或陈词滥调", default="")
+        
+        # 特殊要求
+        special_requirements = ui.prompt("其他特殊要求或偏好", default="")
+        
+        # 组合额外要求
+        additional_parts = []
+        if tone_preference: additional_parts.append(f"语调要求：{tone_preference}")
+        if pov_preference: additional_parts.append(f"视角要求：{pov_preference}")
+        if rhythm_preference: additional_parts.append(f"节奏要求：{rhythm_preference}")
+        if world_setting: additional_parts.append(f"世界观要求：{world_setting}")
+        if avoid_elements: additional_parts.append(f"避免元素：{avoid_elements}")
+        if special_requirements: additional_parts.append(f"特殊要求：{special_requirements}")
+        
+        if additional_parts:
+            additional_requirements = "\n\n用户详细要求：\n" + "\n".join(additional_parts)
+    
     # 检查AI服务是否可用
     if not llm_service.is_available():
         ui.print_error("AI服务不可用，请检查配置。")
@@ -373,10 +412,14 @@ def generate_canon_bible_for_new_project():
     ui.print_info("正在生成Canon Bible，请稍候...")
     
     try:
+        # 构建用户提示
+        user_prompt = additional_requirements if detailed_mode else ""
+        
         canon_result = llm_service.generate_canon_bible(
             one_line_theme=one_line_theme,
             selected_genre=selected_genre,
-            audience_and_tone=audience_and_tone
+            audience_and_tone=audience_and_tone,
+            user_prompt=user_prompt
         )
         
         if canon_result:

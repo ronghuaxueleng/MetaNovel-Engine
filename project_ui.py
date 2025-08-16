@@ -394,7 +394,8 @@ def generate_canon_bible_for_new_project():
                 
                 # 显示生成的内容概览
                 console.print("\n[cyan]生成的Canon Bible概览：[/cyan]")
-                content_preview = canon_result[:200] + "..." if len(str(canon_result)) > 200 else str(canon_result)
+                canon_str = str(canon_result)
+                content_preview = canon_str[:200] + "..." if len(canon_str) > 200 else canon_str
                 console.print(f"[dim]{content_preview}[/dim]")
             else:
                 ui.print_error("Canon Bible 生成成功但保存失败")

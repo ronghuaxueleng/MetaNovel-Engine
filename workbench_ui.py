@@ -103,7 +103,8 @@ def handle_canon_bible_management():
             
             if canon_data and canon_data.get("canon_content"):
                 status_text = "✅ 已设置"
-                preview = canon_data.get("canon_content", "")[:100] + "..." if len(canon_data.get("canon_content", "")) > 100 else canon_data.get("canon_content", "")
+                canon_content = str(canon_data.get("canon_content", ""))
+                preview = canon_content[:100] + "..." if len(canon_content) > 100 else canon_content
                 console.print(f"[cyan]当前Canon状态:[/cyan] {status_text}")
                 console.print(f"[dim]内容预览: {preview}[/dim]\n")
             else:
@@ -223,7 +224,8 @@ def generate_canon_bible_interactive(dm):
                 
                 # 显示预览
                 console.print("\n[cyan]生成的Canon Bible概览：[/cyan]")
-                preview = canon_result[:300] + "..." if len(str(canon_result)) > 300 else str(canon_result)
+                canon_str = str(canon_result)
+                preview = canon_str[:300] + "..." if len(canon_str) > 300 else canon_str
                 console.print(Panel(preview, border_style="dim"))
             else:
                 ui.print_error("Canon Bible生成成功但保存失败")

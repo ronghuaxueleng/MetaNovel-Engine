@@ -197,6 +197,7 @@ def view_canon_bible_details(dm, canon_data):
 def generate_canon_bible_interactive(dm, detailed_mode=False):
     """交互式生成Canon Bible"""
     from llm_service import llm_service
+    import json
     
     mode_text = "详细配置" if detailed_mode else "快速"
     console.print(Panel(f"📖 生成Canon Bible（{mode_text}模式）", border_style="cyan"))
@@ -271,11 +272,32 @@ def generate_canon_bible_interactive(dm, detailed_mode=False):
         
         if canon_result:
             # 保存
+            # 确保canon_content是标准JSON格式
+            if isinstance(canon_result, dict):
+                canon_content = json.dumps(canon_result, ensure_ascii=False, indent=2)
+            elif isinstance(canon_result, str):
+                # 如果是字符串，尝试解析并重新格式化
+                try:
+                    # 先尝试JSON解析
+                    parsed = json.loads(canon_result)
+                    canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
+                except json.JSONDecodeError:
+                    # 如果失败，尝试Python字典格式
+                    try:
+                        import ast
+                        parsed = ast.literal_eval(canon_result)
+                        canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
+                    except (ValueError, SyntaxError):
+                        # 如果都失败，直接使用原字符串
+                        canon_content = canon_result
+            else:
+                canon_content = str(canon_result)
+            
             canon_data = {
                 "one_line_theme": one_line_theme,
                 "selected_genre": selected_genre,
                 "audience_and_tone": audience_and_tone,
-                "canon_content": canon_result if isinstance(canon_result, str) else str(canon_result)
+                "canon_content": canon_content
             }
             
             if dm.write_canon_bible(canon_data):
@@ -306,9 +328,31 @@ def edit_canon_bible_interactive(dm, canon_data):
     
     try:
         # 解析当前Canon内容
-        current_canon = json.loads(canon_data.get("canon_content", "{}"))
-    except json.JSONDecodeError:
-        ui.print_error("Canon内容格式错误，无法编辑。")
+        canon_content = canon_data.get("canon_content", "{}")
+        
+        # 尝试标准JSON解析
+        try:
+            current_canon = json.loads(canon_content)
+        except json.JSONDecodeError:
+            # 如果JSON解析失败，尝试Python字典格式（LLM有时返回单引号格式）
+            try:
+                import ast
+                current_canon = ast.literal_eval(canon_content)
+                
+                # 转换为标准JSON并重新保存
+                ui.print_info("检测到非标准JSON格式，正在修复...")
+                canon_data['canon_content'] = json.dumps(current_canon, ensure_ascii=False, indent=2)
+                dm.write_canon_bible(canon_data)
+                ui.print_success("Canon格式已修复！")
+                
+            except (ValueError, SyntaxError) as e:
+                ui.print_error(f"Canon内容格式错误，无法解析: {e}")
+                ui.print_info("请尝试重新生成Canon Bible。")
+                ui.pause()
+                return
+                
+    except Exception as e:
+        ui.print_error(f"读取Canon时出错: {e}")
         ui.pause()
         return
     

@@ -350,6 +350,7 @@ def edit_project():
 def generate_canon_bible_for_new_project(detailed_mode=False):
     """为新创建的项目生成Canon Bible"""
     from llm_service import llm_service
+    import json
     
     mode_text = "详细配置" if detailed_mode else "快速"
     console.print(Panel(f"📖 生成Canon Bible（{mode_text}模式）", border_style="cyan"))
@@ -425,11 +426,32 @@ def generate_canon_bible_for_new_project(detailed_mode=False):
         if canon_result:
             # 保存Canon Bible到数据管理器
             dm = project_data_manager.get_data_manager()
+            # 确保canon_content是标准JSON格式
+            if isinstance(canon_result, dict):
+                canon_content = json.dumps(canon_result, ensure_ascii=False, indent=2)
+            elif isinstance(canon_result, str):
+                # 如果是字符串，尝试解析并重新格式化
+                try:
+                    # 先尝试JSON解析
+                    parsed = json.loads(canon_result)
+                    canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
+                except json.JSONDecodeError:
+                    # 如果失败，尝试Python字典格式
+                    try:
+                        import ast
+                        parsed = ast.literal_eval(canon_result)
+                        canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
+                    except (ValueError, SyntaxError):
+                        # 如果都失败，直接使用原字符串
+                        canon_content = canon_result
+            else:
+                canon_content = str(canon_result)
+            
             canon_data = {
                 "one_line_theme": one_line_theme,
                 "selected_genre": selected_genre,
                 "audience_and_tone": audience_and_tone,
-                "canon_content": canon_result if isinstance(canon_result, str) else str(canon_result)
+                "canon_content": canon_content
             }
             
             if dm.write_canon_bible(canon_data):

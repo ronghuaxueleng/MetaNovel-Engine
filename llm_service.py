@@ -554,7 +554,23 @@ class LLMService:
         
         return self._make_json_request(prompt, task_name="主题分析")
     
-    def generate_theme_paragraph_variants(self, one_line_theme, selected_genre, user_intent, user_prompt=""):
+    def generate_canon_bible(self, one_line_theme, selected_genre, audience_and_tone="", user_prompt=""):
+        """生成故事创作规范(Canon Bible)"""
+        if user_prompt is None:
+            user_prompt = ""
+            
+        prompt = self._get_prompt("canon_bible", user_prompt, 
+                                 one_line_theme=one_line_theme,
+                                 selected_genre=selected_genre,
+                                 audience_and_tone=audience_and_tone)
+        if prompt is None:
+            # 后备提示词
+            base_prompt = f"请为以下故事创建创作规范(Canon Bible)，包括风格、节奏、视角策略、世界观等，以JSON格式返回。\n\n主题：{one_line_theme}\n类型：{selected_genre}\n目标读者：{audience_and_tone}"
+            prompt = f"{base_prompt}\n\n用户额外要求：{user_prompt.strip()}" if user_prompt.strip() else base_prompt
+        
+        return self._make_json_request(prompt, task_name="Canon Bible生成")
+
+    def generate_theme_paragraph_variants(self, one_line_theme, selected_genre, user_intent, canon="", user_prompt=""):
         """生成3个版本的主题段落"""
         if user_prompt is None:
             user_prompt = ""
@@ -562,7 +578,8 @@ class LLMService:
         prompt = self._get_prompt("theme_paragraph_variants", user_prompt, 
                                  one_line_theme=one_line_theme,
                                  selected_genre=selected_genre,
-                                 user_intent=user_intent)
+                                 user_intent=user_intent,
+                                 canon=canon)
         if prompt is None:
             # 后备提示词
             base_prompt = f"请根据以下信息生成3个不同版本的故事构想，每个版本约{GENERATION_CONFIG['theme_paragraph_length']}字，以JSON格式返回。\n\n主题：{one_line_theme}\n类型：{selected_genre}\n用户意图：{user_intent}"
@@ -570,7 +587,7 @@ class LLMService:
         
         return self._make_json_request(prompt, task_name="主题段落生成")
     
-    def generate_theme_paragraph_with_genre(self, one_line_theme, selected_genre, user_intent, user_prompt=""):
+    def generate_theme_paragraph_with_genre(self, one_line_theme, selected_genre, user_intent, canon="", user_prompt=""):
         """基于类型和用户意图生成主题段落"""
         if user_prompt is None:
             user_prompt = ""
@@ -578,7 +595,8 @@ class LLMService:
         prompt = self._get_prompt("theme_paragraph", user_prompt, 
                                  one_line_theme=one_line_theme,
                                  selected_genre=selected_genre,
-                                 user_intent=user_intent)
+                                 user_intent=user_intent,
+                                 canon=canon)
         if prompt is None:
             # 后备提示词
             base_prompt = f"请将以下一句话主题按照{selected_genre}类型的风格，扩展成一段具体的故事构想，字数在{GENERATION_CONFIG['theme_paragraph_length']}。\n\n主题：{one_line_theme}\n用户意图：{user_intent}"
@@ -586,7 +604,7 @@ class LLMService:
         
         return self._make_request(prompt)
     
-    def generate_character_description(self, char_name, user_prompt="", one_line_theme="", story_context=""):
+    def generate_character_description(self, char_name, user_prompt="", one_line_theme="", story_context="", canon=""):
         """生成角色描述"""
         # 如果没有提供上下文信息，尝试从数据管理器获取
         if not one_line_theme or not story_context:
@@ -610,7 +628,8 @@ class LLMService:
         prompt = self._get_prompt("character_description", user_prompt, 
                                   char_name=char_name, 
                                   one_line_theme=one_line_theme,
-                                  story_context=story_context)
+                                  story_context=story_context,
+                                  canon=canon)
         if prompt is None:
             # 后备提示词
             base_prompt = f"请为小说角色 '{char_name}' 创建一个详细的角色描述，包括外貌特征、性格特点、背景故事、能力特长等方面，字数在{GENERATION_CONFIG['character_description_length']}。请直接输出角色描述，不要包含额外说明和标题。"
@@ -618,7 +637,7 @@ class LLMService:
         
         return self._make_request(prompt)
     
-    def generate_location_description(self, loc_name, user_prompt="", one_line_theme="", story_context=""):
+    def generate_location_description(self, loc_name, user_prompt="", one_line_theme="", story_context="", canon=""):
         """生成场景描述"""
         # 如果没有提供上下文信息，尝试从数据管理器获取
         if not one_line_theme or not story_context:
@@ -642,7 +661,8 @@ class LLMService:
         prompt = self._get_prompt("location_description", user_prompt, 
                                   loc_name=loc_name, 
                                   one_line_theme=one_line_theme,
-                                  story_context=story_context)
+                                  story_context=story_context,
+                                  canon=canon)
         if prompt is None:
             # 后备提示词
             base_prompt = f"请为小说场景 '{loc_name}' 创建一个详细的场景描述，包括地理位置、环境特色、建筑风格、氛围感受、历史背景、重要特征等方面，字数在{GENERATION_CONFIG['location_description_length']}。请直接输出场景描述，不要包含额外说明和标题。"
@@ -650,7 +670,7 @@ class LLMService:
         
         return self._make_request(prompt)
     
-    def generate_item_description(self, item_name, user_prompt="", one_line_theme="", story_context=""):
+    def generate_item_description(self, item_name, user_prompt="", one_line_theme="", story_context="", canon=""):
         """生成道具描述"""
         # 如果没有提供上下文信息，尝试从数据管理器获取
         if not one_line_theme or not story_context:
@@ -674,7 +694,8 @@ class LLMService:
         prompt = self._get_prompt("item_description", user_prompt, 
                                   item_name=item_name, 
                                   one_line_theme=one_line_theme,
-                                  story_context=story_context)
+                                  story_context=story_context,
+                                  canon=canon)
         if prompt is None:
             # 后备提示词
             base_prompt = f"请为小说道具 '{item_name}' 创建一个详细的道具描述，包括外观特征、材质工艺、功能用途、历史来源、特殊能力、重要意义等方面，字数在{GENERATION_CONFIG['item_description_length']}。请直接输出道具描述，不要包含额外说明和标题。"
@@ -682,12 +703,13 @@ class LLMService:
         
         return self._make_request(prompt)
     
-    def generate_story_outline(self, one_line_theme, paragraph_theme, characters_info="", user_prompt=""):
+    def generate_story_outline(self, one_line_theme, paragraph_theme, characters_info="", canon="", user_prompt=""):
         """生成故事大纲"""
         prompt = self._get_prompt("story_outline", user_prompt, 
                                   one_line_theme=one_line_theme, 
                                   paragraph_theme=paragraph_theme,
-                                  characters_info=characters_info)
+                                  characters_info=characters_info,
+                                  canon=canon)
         if prompt is None:
             # 后备提示词
             base_prompt = f"""请基于以下信息创建一个详细的小说故事大纲：
@@ -708,12 +730,13 @@ class LLMService:
         
         return self._make_request(prompt)
     
-    def generate_chapter_outline(self, one_line_theme, story_outline, characters_info="", user_prompt=""):
+    def generate_chapter_outline(self, one_line_theme, story_outline, characters_info="", canon="", user_prompt=""):
         """生成分章细纲"""
         prompt = self._get_prompt("chapter_outline", user_prompt, 
                                 one_line_theme=one_line_theme, 
                                 story_outline=story_outline, 
-                                characters_info=characters_info)
+                                characters_info=characters_info,
+                                canon=canon)
         
         if prompt is None:
             # 后备提示词
@@ -754,18 +777,29 @@ class LLMService:
             # 如果JSON解析失败，返回原始文本
             return self._make_request(prompt)
     
-    def generate_chapter_summary(self, chapter, chapter_num, context_info, user_prompt=""):
+    def generate_chapter_summary(self, chapter_card, chapter_num, context_info, canon="", user_prompt=""):
         """生成章节概要"""
         if user_prompt is None:
             user_prompt = ""
 
-        base_prompt = f"""请基于以下信息为第{chapter_num}章创建详细的章节概要：
+        prompt = self._get_prompt(
+            "chapter_summary",
+            user_prompt=user_prompt,
+            chapter_num=chapter_num,
+            chapter_card=chapter_card,
+            context_info=context_info,
+            canon=canon
+        )
+        
+        if prompt is None:
+            # 后备提示词
+            base_prompt = f"""请基于以下信息为第{chapter_num}章创建详细的章节概要：
 
 {context_info}
 
 当前章节信息：
-章节标题：{chapter.get('title', f'第{chapter_num}章')}
-章节大纲：{chapter.get('outline', '无大纲')}
+章节标题：{chapter_card.get('title', f'第{chapter_num}章')}
+章节大纲：{chapter_card.get('outline', '无大纲')}
 
 请创建一个详细的章节概要，包含：
 1. 场景设定（时间、地点、环境）
@@ -776,15 +810,15 @@ class LLMService:
 6. 与整体故事的连接
 
 概要应该详细具体，字数在{GENERATION_CONFIG['chapter_summary_length']}，为后续的正文写作提供充分的指导。请直接输出章节概要，不要包含额外说明和标题。"""
+            
+            if user_prompt and user_prompt.strip():
+                prompt = f"{base_prompt}\n\n用户额外要求：{user_prompt.strip()}"
+            else:
+                prompt = base_prompt
         
-        if user_prompt and user_prompt.strip():
-            full_prompt = f"{base_prompt}\n\n用户额外要求：{user_prompt.strip()}"
-        else:
-            full_prompt = base_prompt
-        
-        return self._make_request(full_prompt)
+        return self._make_request(prompt)
     
-    def generate_novel_chapter(self, chapter, summary_info, chapter_num, context_info, user_prompt=""):
+    def generate_novel_chapter(self, chapter_card, summary_info, chapter_num, context_info, canon="", user_prompt=""):
         """生成单章小说正文"""
         if user_prompt is None:
             user_prompt = ""
@@ -794,9 +828,10 @@ class LLMService:
             "novel_chapter",
             user_prompt=user_prompt,
             chapter_num=chapter_num,
-            chapter=chapter,
+            chapter_card=chapter_card,
             summary_info=summary_info,
-            context_info=context_info
+            context_info=context_info,
+            canon=canon
         )
         
         if prompt is None:
@@ -806,8 +841,8 @@ class LLMService:
 {context_info}
 
 当前章节信息：
-章节标题：{chapter.get('title', f'第{chapter_num}章')}
-章节大纲：{chapter.get('outline', '无大纲')}
+章节标题：{chapter_card.get('title', f'第{chapter_num}章')}
+章节大纲：{chapter_card.get('outline', '无大纲')}
 
 章节概要：
 {summary_info.get('summary', '无概要')}
@@ -831,7 +866,7 @@ class LLMService:
         return self._make_request(prompt, timeout=120)
 
     # 新增异步方法
-    async def generate_chapter_summary_async(self, chapter, chapter_num, context_info, user_prompt="", progress_callback=None):
+    async def generate_chapter_summary_async(self, chapter_card, chapter_num, context_info, canon="", user_prompt="", progress_callback=None):
         """异步生成章节概要"""
         if user_prompt is None:
             user_prompt = ""
@@ -841,8 +876,9 @@ class LLMService:
             "chapter_summary",
             user_prompt=user_prompt,
             chapter_num=chapter_num,
-            chapter=chapter,
-            context_info=context_info
+            chapter_card=chapter_card,
+            context_info=context_info,
+            canon=canon
         )
         
         if prompt is None:
@@ -852,8 +888,8 @@ class LLMService:
 {context_info}
 
 当前章节信息：
-章节标题：{chapter.get('title', f'第{chapter_num}章')}
-章节大纲：{chapter.get('outline', '无大纲')}
+章节标题：{chapter_card.get('title', f'第{chapter_num}章')}
+章节大纲：{chapter_card.get('outline', '无大纲')}
 
 请创建一个详细的章节概要，包含：
 1. 场景设定（时间、地点、环境）
@@ -876,7 +912,7 @@ class LLMService:
             progress_callback=progress_callback
         )
     
-    async def generate_novel_chapter_async(self, chapter, summary_info, chapter_num, context_info, user_prompt="", progress_callback=None):
+    async def generate_novel_chapter_async(self, chapter_card, summary_info, chapter_num, context_info, canon="", user_prompt="", progress_callback=None):
         """异步生成单章小说正文"""
         if user_prompt is None:
             user_prompt = ""
@@ -886,9 +922,10 @@ class LLMService:
             "novel_chapter",
             user_prompt=user_prompt,
             chapter_num=chapter_num,
-            chapter=chapter,
+            chapter_card=chapter_card,
             summary_info=summary_info,
-            context_info=context_info
+            context_info=context_info,
+            canon=canon
         )
         
         if prompt is None:
@@ -898,8 +935,8 @@ class LLMService:
 {context_info}
 
 当前章节信息：
-章节标题：{chapter.get('title', f'第{chapter_num}章')}
-章节大纲：{chapter.get('outline', '无大纲')}
+章节标题：{chapter_card.get('title', f'第{chapter_num}章')}
+章节大纲：{chapter_card.get('outline', '无大纲')}
 
 章节概要：
 {summary_info.get('summary', '无概要')}
@@ -1093,13 +1130,14 @@ class LLMService:
         
         return results, failed_chapters
     
-    def generate_novel_critique(self, chapter_title, chapter_num, chapter_content, context_info, user_prompt=""):
+    def generate_novel_critique(self, chapter_title, chapter_num, chapter_content, context_info, canon="", user_prompt=""):
         """生成小说章节批评"""
         prompt = self._get_prompt("novel_critique", user_prompt, 
                                   chapter_title=chapter_title,
                                   chapter_num=chapter_num,
                                   chapter_content=chapter_content,
-                                  context_info=context_info)
+                                  context_info=context_info,
+                                  canon=canon)
         
         if prompt is None:
             # 后备提示词
@@ -1140,14 +1178,15 @@ class LLMService:
             # 如果JSON解析失败，返回原始文本
             return self._make_request(prompt, timeout=90)
     
-    def generate_novel_refinement(self, chapter_title, chapter_num, original_content, critique_feedback, context_info, user_prompt=""):
+    def generate_novel_refinement(self, chapter_title, chapter_num, original_content, critique_feedback, context_info, canon="", user_prompt=""):
         """基于批评反馈修正小说章节"""
         prompt = self._get_prompt("novel_refinement", user_prompt, 
                                   chapter_title=chapter_title,
                                   chapter_num=chapter_num,
                                   original_content=original_content,
                                   critique_feedback=critique_feedback,
-                                  context_info=context_info)
+                                  context_info=context_info,
+                                  canon=canon)
         
         if prompt is None:
             # 后备提示词
@@ -1171,13 +1210,13 @@ class LLMService:
         
         return self._make_request(prompt, timeout=120)
     
-    def generate_novel_chapter_with_refinement(self, chapter, summary_info, chapter_num, context_info, user_prompt="", progress_callback=None):
+    def generate_novel_chapter_with_refinement(self, chapter_card, summary_info, chapter_num, context_info, canon="", user_prompt="", progress_callback=None):
         """生成小说章节正文，包含反思修正流程"""
         timestamp = datetime.now().isoformat()
-        chapter_title = chapter.get('title', f'第{chapter_num}章')
+        chapter_title = chapter_card.get('title', f'第{chapter_num}章')
         
         # 首先生成初稿
-        initial_content = self.generate_novel_chapter(chapter, summary_info, chapter_num, context_info, user_prompt)
+        initial_content = self.generate_novel_chapter(chapter_card, summary_info, chapter_num, context_info, canon, user_prompt)
         
         if not initial_content:
             return None
@@ -1190,7 +1229,7 @@ class LLMService:
             return initial_content
         
         # 生成批评反馈
-        critique = self.generate_novel_critique(chapter_title, chapter_num, initial_content, context_info)
+        critique = self.generate_novel_critique(chapter_title, chapter_num, initial_content, context_info, canon)
         
         if not critique:
             print(f"第{chapter_num}章批评生成失败，返回初稿")
@@ -1232,7 +1271,7 @@ class LLMService:
                 return initial_content
         
         # 生成修正版本
-        refined_content = self.generate_novel_refinement(chapter_title, chapter_num, initial_content, critique, context_info, user_prompt)
+        refined_content = self.generate_novel_refinement(chapter_title, chapter_num, initial_content, critique, context_info, canon, user_prompt)
         
         if not refined_content:
             print(f"第{chapter_num}章修正失败，返回初稿")
@@ -1253,13 +1292,14 @@ class LLMService:
         return refined_content
     
     # 异步版本的新方法
-    async def generate_novel_critique_async(self, chapter_title, chapter_num, chapter_content, context_info, user_prompt="", progress_callback=None):
+    async def generate_novel_critique_async(self, chapter_title, chapter_num, chapter_content, context_info, canon="", user_prompt="", progress_callback=None):
         """异步生成小说章节批评"""
         prompt = self._get_prompt("novel_critique", user_prompt, 
                                   chapter_title=chapter_title,
                                   chapter_num=chapter_num,
                                   chapter_content=chapter_content,
-                                  context_info=context_info)
+                                  context_info=context_info,
+                                  canon=canon)
         
         if prompt is None:
             # 后备提示词
@@ -1311,14 +1351,15 @@ class LLMService:
                 progress_callback=progress_callback
             )
     
-    async def generate_novel_refinement_async(self, chapter_title, chapter_num, original_content, critique_feedback, context_info, user_prompt="", progress_callback=None):
+    async def generate_novel_refinement_async(self, chapter_title, chapter_num, original_content, critique_feedback, context_info, canon="", user_prompt="", progress_callback=None):
         """异步基于批评反馈修正小说章节"""
         prompt = self._get_prompt("novel_refinement", user_prompt, 
                                   chapter_title=chapter_title,
                                   chapter_num=chapter_num,
                                   original_content=original_content,
                                   critique_feedback=critique_feedback,
-                                  context_info=context_info)
+                                  context_info=context_info,
+                                  canon=canon)
         
         if prompt is None:
             # 后备提示词
@@ -1348,16 +1389,16 @@ class LLMService:
             progress_callback=progress_callback
         )
     
-    async def generate_novel_chapter_with_refinement_async(self, chapter, summary_info, chapter_num, context_info, user_prompt="", progress_callback=None):
+    async def generate_novel_chapter_with_refinement_async(self, chapter_card, summary_info, chapter_num, context_info, canon="", user_prompt="", progress_callback=None):
         """异步生成小说章节正文，包含反思修正流程"""
         timestamp = datetime.now().isoformat()
-        chapter_title = chapter.get('title', f'第{chapter_num}章')
+        chapter_title = chapter_card.get('title', f'第{chapter_num}章')
         
         # 首先生成初稿
         if progress_callback:
             progress_callback(f"第{chapter_num}章：生成初稿...")
         
-        initial_content = await self.generate_novel_chapter_async(chapter, summary_info, chapter_num, context_info, user_prompt, progress_callback)
+        initial_content = await self.generate_novel_chapter_async(chapter_card, summary_info, chapter_num, context_info, canon, user_prompt, progress_callback)
         
         if not initial_content:
             return None
@@ -1373,7 +1414,7 @@ class LLMService:
         if progress_callback:
             progress_callback(f"第{chapter_num}章：生成批评反馈...")
         
-        critique = await self.generate_novel_critique_async(chapter_title, chapter_num, initial_content, context_info, "", progress_callback)
+        critique = await self.generate_novel_critique_async(chapter_title, chapter_num, initial_content, context_info, canon, "", progress_callback)
         
         if not critique:
             if progress_callback:
@@ -1414,7 +1455,7 @@ class LLMService:
         if progress_callback:
             progress_callback(f"第{chapter_num}章：基于批评反馈修正...")
         
-        refined_content = await self.generate_novel_refinement_async(chapter_title, chapter_num, initial_content, critique, context_info, user_prompt, progress_callback)
+        refined_content = await self.generate_novel_refinement_async(chapter_title, chapter_num, initial_content, critique, context_info, canon, user_prompt, progress_callback)
         
         if not refined_content:
             if progress_callback:

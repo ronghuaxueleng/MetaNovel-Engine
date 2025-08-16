@@ -1,0 +1,55 @@
+{
+  "canon_bible": {
+    "base_prompt": "角色：首席故事统筹（Story Bible 作者）。\n目标：生成贯穿全流程的 canon（风格/体裁节奏/视角策略/世界观/用词/长度常量/禁用清单/铺垫-兑现板）。\n语言：简体中文。\n输出：仅返回严格 JSON，不要额外说明、不要 Markdown 代码块、不要展示推理过程。\n\n输入材料：\n- 一句话主题：{one_line_theme}\n- 体裁：{selected_genre}\n- 目标读者与语域偏好：{audience_and_tone}\n\n请生成 canon JSON（键名固定，不得缺漏）：\n{\n  \"tone\": {\n    \"register\": \"语域描述（如 冷静/克制/锋利）\",\n    \"rhythm\": \"节奏描述（如 短句主导，少比喻）\"\n  },\n  \"pov_rules\": {\n    \"default\": \"close-third\",\n    \"allowed\": [\"first\", \"close-third\"],\n    \"distance\": \"近距/中距\"\n  },\n  \"genre_addendum\": {\n    \"thriller\": {\"try_fail_cycles\": 3, \"twist_density\": \"每2章\"},\n    \"romance\": {\"distance_curve\": \"相遇-靠近-疏离-复合\"},\n    \"mystery\": {\"clue_density\": \"每章1主线索\", \"red_herring_rate\": \"每3章1误导\"}\n  },\n  \"theme\": {\n    \"thesis\": \"主命题\",\n    \"antithesis\": \"反命题\",\n    \"synthesis\": \"综合命题\"\n  },\n  \"world\": {\n    \"time_place\": \"时空与关键社会约束\",\n    \"constraints\": [\"需可证/可查的现实约束1\", \"现实约束2\"]\n  },\n  \"style_do\": [\"具体名词>形容词\", \"动作承载心理\"],\n  \"style_dont\": [\"空洞情绪句\", \"滥用比喻\"],\n  \"lexicon\": {\n    \"key_terms\": [\"核心术语1\", \"术语2\"],\n    \"ban_phrases\": [\"陈词滥调1\", \"陈词滥调2\"]\n  },\n  \"continuity\": {\n    \"timeline\": [],\n    \"setups\": [],\n    \"payoffs\": []\n  },\n  \"lengths\": {\n    \"theme_paragraph\": 800,\n    \"story_outline\": 1200,\n    \"chapter_outline\": 1200,\n    \"chapter_summary\": 450,\n    \"chapter\": 1800\n  }\n}",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "theme_analysis": {
+    "base_prompt": "角色：资深文学策划编辑。\n目标：分析一句话主题并推荐最适体裁。\n语言：简体中文。\n输出：仅返回严格 JSON，不要额外说明、不要 Markdown 代码块、不要展示推理过程。\n\n原始主题：{one_line_theme}\n\n要求：\n- 给出3-5个体裁建议；\n- 说明契合理由与潜力；\n- 直面复杂议题但保持论断可证与叙事可信。\n\n返回 JSON：\n{\n  \"recommended_genres\": [\n    {\n      \"genre\": \"体裁\",\n      \"reason\": \"契合点（<=40字）\",\n      \"potential\": \"故事潜力（<=50字）\"\n    }\n  ],\n  \"primary_recommendation\": \"体裁\",\n  \"reasoning\": \"主要推荐理由（<=60字）\"\n}",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "theme_paragraph_variants": {
+    "base_prompt": "角色：资深小说家。\n目标：按同一体裁输出3个差异化故事构想。\n语言：简体中文。\n输出：先正文（3段），后附 JSON 概览（不要 Markdown 代码块）。\n\n原始主题：{one_line_theme}\n体裁：{selected_genre}\n用户意图：{user_intent}\ncanon：{canon}\n\n正文要求：\n- 每个版本各自成段，≈{theme_paragraph_length} 字（±10%）；\n- 明确不同的冲突路径与情感驱动力；\n- 给出可驱动剧情的“硬信息”（习惯/短板/外在约束）。\n\n附录 JSON（固定键名）：\n{\n  \"variants\": [\n    {\n      \"version\": \"A\",\n      \"focus\": \"重点特色（<=12字）\",\n      \"core_conflict\": \"核心冲突（<=20字）\"\n    },\n    {\n      \"version\": \"B\",\n      \"focus\": \"重点特色\",\n      \"core_conflict\": \"核心冲突\"\n    },\n    {\n      \"version\": \"C\",\n      \"focus\": \"重点特色\",\n      \"core_conflict\": \"核心冲突\"\n    }\n  ]\n}",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "theme_paragraph": {
+    "base_prompt": "角色：资深小说家。\n目标：生成覆盖全貌的故事梗概（非开篇情节）。\n语言：简体中文。\n输出：直接输出梗概正文（不加标题/列表/推理过程）。\n\n原始主题：{one_line_theme}\n体裁：{selected_genre}\n用户意图：{user_intent}\ncanon：{canon}\n\n要求：\n- 概括核心冲突根源与演化；\n- 明确角色动机、阻力、关键转折与命运走向；\n- 体现类型特质与主题意涵；\n- ≈{theme_paragraph_length} 字（±10%）。\n\n自检（模型内部执行，不输出）：动机可信、因果自洽、合乎常识/物理。",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "character_description": {
+    "base_prompt": "角色：人物塑造向小说家。\n目标：为 ‘{char_name}’ 生成可驱动剧情的人物设定。\n语言：简体中文。\n输出：正文为自然段描述；末尾附 JSON 概览（不要 Markdown 代码块）。\n\n主题：{one_line_theme}\n背景：{story_context}\ncanon：{canon}\n\n正文要点：\n- 外貌与气质；\n- 深层性格与行为模式；\n- 成长经历与关键影响；\n- 价值观与内在冲突；\n- 技能/天赋与短板（至少1个可被对手利用的短板）；\n- 与主题的深层关联。\n\n约束：不锁死当下情节，但提供可用于冲突设计的“硬信息”（口头禅/惯性动作/明确禁忌/外在规则）。\n长度：≈{character_description_length} 字（±10%）。\n\n附录 JSON：\n{\n  \"tells\": [\"可见习惯或口头禅\"],\n  \"exploitable_flaws\": [\"可被利用的短板\"],\n  \"value_axis\": \"人物的价值坐标概述\"\n}",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "location_description": {
+    "base_prompt": "角色：氛围营造向小说家。\n目标：为 ‘{loc_name}’ 生成可多剧情复用的场景设定。\n语言：简体中文。\n输出：正文为自然段描述；末尾附 JSON 概览（不要 Markdown 代码块）。\n\n主题：{one_line_theme}\n背景：{story_context}\ncanon：{canon}\n\n正文要点：地理/环境、建筑/空间、历史/文化、象征/情感、隐秘结构或异常点、与主题的关联。\n约束：不写当前事件或具体人物行为；强调可复用潜力与可操作细节。\n长度：≈{location_description_length} 字（±10%）。\n\n附录 JSON：\n{\n  \"multi_use_features\": [\"可用于潜行/对峙/告白等的空间特性\"],\n  \"hazards\": [\"环境风险或限制\"],\n  \"symbolism\": \"象征意涵\"\n}",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "item_description": {
+    "base_prompt": "角色：象征运用向小说家。\n目标：为 ‘{item_name}’ 生成承载记忆/命运的道具设定。\n语言：简体中文。\n输出：正文为自然段描述；末尾附 JSON 概览（不要 Markdown 代码块）。\n\n主题：{one_line_theme}\n背景：{story_context}\ncanon：{canon}\n\n正文要点：外观/材质、来源/制作、功能/使用、象征/情感、潜在属性或隐藏信息、与主题的关联。\n约束：不绑定当下人物关系；强调多情境功能。\n长度：≈{item_description_length} 字（±10%）。\n\n附录 JSON：\n{\n  \"uses\": [\"不同情境下的用途\"],\n  \"secrets\": [\"隐藏信息或二级功能\"],\n  \"symbolism\": \"象征意涵\"\n}",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "story_outline": {
+    "base_prompt": "角色：结构与人性并重的小说家。\n目标：生成三幕式故事大纲 + 体裁节奏附件（文本+JSON）。\n语言：简体中文。\n输出：先文本大纲（段落），后附 JSON ‘节奏附件’（不要 Markdown 代码块）。\n\n主题：{one_line_theme}\n构想：{paragraph_theme}\n角色：{characters_info}\ncanon：{canon}\n\n文本大纲（三幕关键节点齐全；每节点体现内在冲突外化；避免巧合解题；≈{story_outline_length} 字（±10%））。\n\n节奏附件 JSON（按体裁选择生成相关块，键存在但可空数组）：\n{\n  \"clue_board\": [\n    {\"clue\": \"线索\", \"source\": \"来源\", \"credibility\": \"高/中/低\", \"is_red_herring\": false}\n  ],\n  \"try_fail_cycles\": [\n    {\"goal\": \"目标\", \"attempt\": \"尝试\", \"fail_reason\": \"失败原因\", \"cost\": \"代价\"}\n  ],\n  \"distance_curve\": [\n    {\"stage\": \"相遇/靠近/疏离/复合\", \"delta\": -1}\n  ]\n}",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "chapter_outline": {
+    "base_prompt": "角色：结构导向小说家。\n目标：把故事大纲拆分为 5-10 章‘章卡片’（严格 JSON）。\n语言：简体中文。\n输出：仅返回严格 JSON，不要额外说明、不要 Markdown、不要展示推理过程。\n\n主题：{one_line_theme}\n大纲：{story_outline}\n角色：{characters_info}\ncanon：{canon}\n\n返回 JSON（数组按顺序列出章节）：\n{\n  \"chapters\": [\n    {\n      \"chapter_number\": 1,\n      \"title\": \"标题\",\n      \"pov\": \"人物名 (close-third/first)\",\n      \"scene_goal\": \"本章外显目标\",\n      \"live_obstacle\": \"即场阻力\",\n      \"turning_point\": \"转折点\",\n      \"irreversible_decision\": \"不可逆决策\",\n      \"value_shift\": {\"before\": \"价值/情绪\", \"after\": \"价值/情绪\"},\n      \"stakes_raised\": \"风险提升方式\",\n      \"outline\": \"基于动机的推进梗概\",\n      \"end_hook\": \"逻辑自洽的钩子\",\n      \"setups\": [\"新埋设的铺垫\"],\n      \"payoffs\": [\"兑现的过往铺垫（含章号）\"]\n    }\n  ]\n}\n\n门槛：每章必须存在一次明确的 value_shift。总字数建议 ≈{chapter_outline_length}（±10%）。",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "chapter_summary": {
+    "base_prompt": "角色：关注人物内心的小说家。\n目标：为第 {chapter_num} 章生成深入而真实的章节概要。\n语言：简体中文。\n输出：正文概要 + 末尾 JSON ‘自检’（不要 Markdown 代码块）。\n\n章卡片：{chapter_card}\n背景：{context_info}\ncanon：{canon}\n\n正文要求（≈{chapter_summary_length} 字（±10%））：\n- 明确‘目标-冲突-决策’链路；\n- 事件承接自然、递进清晰；\n- 对话/场景影响情绪与选择；\n- 以可感知行为实现情绪起点→终点。\n\n自检 JSON：\n{\n  \"emotions\": [\"角色A：起点→终点\"],\n  \"scores\": {\n    \"conflict_intensity\": 0,\n    \"value_shift\": 0,\n    \"character_agency\": 0,\n    \"payoff_rate\": 0\n  }\n}\n若任一分值<3，自动进行一次微改写（内部执行，不输出过程）。",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "novel_chapter": {
+    "base_prompt": "角色：文笔稳健的小说家。\n目标：创作第 {chapter_num} 章小说正文，并附‘章卡片+自检’JSON。\n语言：简体中文。\n视角：按章卡片 `pov` 执行（默认 close-third，可 first）。\n输出：先正文，再附 JSON（不要 Markdown 代码块）。\n\n章卡片：{chapter_card}\n章节概要：{summary_info}\n背景：{context_info}\ncanon：{canon}\n\n正文硬性要求：\n- 在叙事中完整实现 scene_goal → live_obstacle → turning_point → irreversible_decision；\n- 以可感知细节兑现 value_shift；\n- 场景细节外化心理，对话/行动双线推进；\n- 道具具象征功能；\n- 时间/空间转换清晰；\n- ≈{novel_chapter_length}（±10%）。\n\n附录 JSON（固定键名）：\n{\n  \"chapter_no\": {chapter_num},\n  \"pov\": \"同章卡片\",\n  \"value_shift\": {\"before\": \"\", \"after\": \"\"},\n  \"setups\": [\"本章新增铺垫\"],\n  \"payoffs\": [\"本章兑现铺垫（含来源章）\"],\n  \"canon_alignment\": {\"violations\": [\"触犯 lexicon/style_dont 等条目\"]},\n  \"scores\": {\"conflict_intensity\": 0, \"value_shift\": 0, \"character_agency\": 0, \"payoff_rate\": 0}\n}\n若任一分值<3，先微改写后再输出最终版本（不展示改写过程）。",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "novel_critique": {
+    "base_prompt": "角色：严格的文学评论家。\n目标：输出可执行的批评（含证据）与优先修正项（严格 JSON）。\n语言：简体中文。\n输出：仅返回 JSON，不要额外说明、不要 Markdown、不要展示推理过程。\n\n标题：{chapter_title}\n章节：第{chapter_num}章\n正文：{chapter_content}\n背景：{context_info}\ncanon：{canon}\n\n返回 JSON（issues 4-8 条；每条<=28字；包含证据）：\n{\n  \"issues\": [\n    {\n      \"category\": \"character|plot|language|experience\",\n      \"problem\": \"具体问题\",\n      \"suggestion\": \"改进建议\",\n      \"evidence\": {\"quote\": \"原文片段\", \"hint\": \"定位线索（如关键词）\"}\n    }\n  ],\n  \"strengths\": [\"优点1\", \"优点2\"],\n  \"priority_fixes\": [\"最需修正1\", \"最需修正2\"]\n}\n总体长度建议：≈{novel_critique_length}（±10%）。",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  },
+  "novel_refinement": {
+    "base_prompt": "角色：精修型小说家。\n目标：依据 JSON 评语修订章节，并输出 patch_log 便于核对。\n语言：简体中文。\n输出：先修订后正文，再附 JSON patch_log（不要 Markdown 代码块）。\n\n标题：{chapter_title}\n章节：第{chapter_num}章\n原文：{original_content}\n评语 JSON：{critique_feedback}\n背景：{context_info}\ncanon：{canon}\n\n修订要求：\n1) 覆盖 issues 中全部问题；\n2) 优先处理 priority_fixes；\n3) strengths 保留；\n4) 与背景与人物设定一致；\n5) 保持原风格与 POV。\n\n附录 JSON：\n{\n  \"patch_log\": [\n    {\"issue\": \"对应问题或优先项\", \"change\": \"做了什么修改\", \"evidence\": \"引用或定位\"}\n  ]\n}\n篇幅：≈{novel_chapter_length}（±10%）。",
+    "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
+  }
+}
+

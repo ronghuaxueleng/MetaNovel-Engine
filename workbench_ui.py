@@ -5,6 +5,42 @@ from export_ui import handle_novel_export
 from project_manager import project_manager
 from rich.panel import Panel
 from datetime import datetime
+import json
+import re
+
+def fix_json_quotes(json_string):
+    """
+    修复JSON字符串中未转义的双引号问题
+    """
+    # 首先尝试正常解析
+    try:
+        return json.loads(json_string)
+    except json.JSONDecodeError:
+        pass
+    
+    # 如果失败，尝试修复引号问题
+    try:
+        def fix_quotes_in_string(match):
+            """修复字符串值中的双引号"""
+            key = match.group(1)  # 键名
+            value = match.group(2)  # 值内容
+            
+            # 转义值中的双引号
+            escaped_value = value.replace('"', '\\"')
+            
+            return f'"{key}": "{escaped_value}"'
+        
+        # 使用正则表达式匹配 "key": "value" 模式，允许值中包含双引号
+        pattern = r'"([^"]+)":\s*"([^"]*(?:"[^"]*)*)"'
+        fixed_string = re.sub(pattern, fix_quotes_in_string, json_string)
+        
+        # 尝试解析修复后的字符串
+        return json.loads(fixed_string)
+        
+    except (json.JSONDecodeError, re.error):
+        pass
+    
+    return None
 
 def show_workbench():
     """显示项目工作台菜单"""
@@ -277,19 +313,35 @@ def generate_canon_bible_interactive(dm, detailed_mode=False):
                 canon_content = json.dumps(canon_result, ensure_ascii=False, indent=2)
             elif isinstance(canon_result, str):
                 # 如果是字符串，尝试解析并重新格式化
+                parsed = None
+                
+                # 尝试1：标准JSON解析
                 try:
-                    # 先尝试JSON解析
                     parsed = json.loads(canon_result)
-                    canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
                 except json.JSONDecodeError:
-                    # 如果失败，尝试Python字典格式
+                    pass
+                
+                # 尝试2：Python字典格式
+                if parsed is None:
                     try:
                         import ast
                         parsed = ast.literal_eval(canon_result)
-                        canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
                     except (ValueError, SyntaxError):
-                        # 如果都失败，直接使用原字符串
-                        canon_content = canon_result
+                        pass
+                
+                # 尝试3：修复JSON中的双引号问题
+                if parsed is None:
+                    try:
+                        parsed = fix_json_quotes(canon_result)
+                    except:
+                        pass
+                
+                # 如果成功解析，转换为标准JSON
+                if parsed is not None:
+                    canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
+                else:
+                    # 如果都失败，直接使用原字符串
+                    canon_content = canon_result
             else:
                 canon_content = str(canon_result)
             
@@ -330,26 +382,43 @@ def edit_canon_bible_interactive(dm, canon_data):
         # 解析当前Canon内容
         canon_content = canon_data.get("canon_content", "{}")
         
-        # 尝试标准JSON解析
+        # 尝试解析Canon内容
+        current_canon = None
+        
+        # 尝试1：标准JSON解析
         try:
             current_canon = json.loads(canon_content)
         except json.JSONDecodeError:
-            # 如果JSON解析失败，尝试Python字典格式（LLM有时返回单引号格式）
+            pass
+        
+        # 尝试2：Python字典格式
+        if current_canon is None:
             try:
                 import ast
                 current_canon = ast.literal_eval(canon_content)
-                
-                # 转换为标准JSON并重新保存
-                ui.print_info("检测到非标准JSON格式，正在修复...")
-                canon_data['canon_content'] = json.dumps(current_canon, ensure_ascii=False, indent=2)
-                dm.write_canon_bible(canon_data)
-                ui.print_success("Canon格式已修复！")
-                
-            except (ValueError, SyntaxError) as e:
-                ui.print_error(f"Canon内容格式错误，无法解析: {e}")
-                ui.print_info("请尝试重新生成Canon Bible。")
-                ui.pause()
-                return
+                ui.print_info("检测到Python字典格式，正在转换为标准JSON...")
+            except (ValueError, SyntaxError):
+                pass
+        
+        # 尝试3：修复JSON中的双引号问题
+        if current_canon is None:
+            try:
+                current_canon = fix_json_quotes(canon_content)
+                if current_canon:
+                    ui.print_info("检测到JSON引号问题，已自动修复...")
+            except:
+                pass
+        
+        # 如果成功解析，保存为标准格式
+        if current_canon is not None:
+            canon_data['canon_content'] = json.dumps(current_canon, ensure_ascii=False, indent=2)
+            dm.write_canon_bible(canon_data)
+            ui.print_success("Canon格式已标准化！")
+        else:
+            ui.print_error("Canon内容格式错误，无法解析。")
+            ui.print_info("请尝试重新生成Canon Bible。")
+            ui.pause()
+            return
                 
     except Exception as e:
         ui.print_error(f"读取Canon时出错: {e}")

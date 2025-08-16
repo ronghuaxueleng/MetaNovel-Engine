@@ -7,6 +7,42 @@ from project_manager import project_manager
 from project_data_manager import project_data_manager
 from ui_utils import ui, console
 from workbench_ui import show_workbench
+import json
+import re
+
+def fix_json_quotes(json_string):
+    """
+    修复JSON字符串中未转义的双引号问题
+    """
+    # 首先尝试正常解析
+    try:
+        return json.loads(json_string)
+    except json.JSONDecodeError:
+        pass
+    
+    # 如果失败，尝试修复引号问题
+    try:
+        def fix_quotes_in_string(match):
+            """修复字符串值中的双引号"""
+            key = match.group(1)  # 键名
+            value = match.group(2)  # 值内容
+            
+            # 转义值中的双引号
+            escaped_value = value.replace('"', '\\"')
+            
+            return f'"{key}": "{escaped_value}"'
+        
+        # 使用正则表达式匹配 "key": "value" 模式，允许值中包含双引号
+        pattern = r'"([^"]+)":\s*"([^"]*(?:"[^"]*)*)"'
+        fixed_string = re.sub(pattern, fix_quotes_in_string, json_string)
+        
+        # 尝试解析修复后的字符串
+        return json.loads(fixed_string)
+        
+    except (json.JSONDecodeError, re.error):
+        pass
+    
+    return None
 
 def handle_project_management():
     """处理项目管理的UI和逻辑"""
@@ -431,19 +467,35 @@ def generate_canon_bible_for_new_project(detailed_mode=False):
                 canon_content = json.dumps(canon_result, ensure_ascii=False, indent=2)
             elif isinstance(canon_result, str):
                 # 如果是字符串，尝试解析并重新格式化
+                parsed = None
+                
+                # 尝试1：标准JSON解析
                 try:
-                    # 先尝试JSON解析
                     parsed = json.loads(canon_result)
-                    canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
                 except json.JSONDecodeError:
-                    # 如果失败，尝试Python字典格式
+                    pass
+                
+                # 尝试2：Python字典格式
+                if parsed is None:
                     try:
                         import ast
                         parsed = ast.literal_eval(canon_result)
-                        canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
                     except (ValueError, SyntaxError):
-                        # 如果都失败，直接使用原字符串
-                        canon_content = canon_result
+                        pass
+                
+                # 尝试3：修复JSON中的双引号问题
+                if parsed is None:
+                    try:
+                        parsed = fix_json_quotes(canon_result)
+                    except:
+                        pass
+                
+                # 如果成功解析，转换为标准JSON
+                if parsed is not None:
+                    canon_content = json.dumps(parsed, ensure_ascii=False, indent=2)
+                else:
+                    # 如果都失败，直接使用原字符串
+                    canon_content = canon_result
             else:
                 canon_content = str(canon_result)
             

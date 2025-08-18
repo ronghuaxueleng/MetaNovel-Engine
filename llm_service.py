@@ -529,11 +529,21 @@ class LLMService:
                 return None
     
     def generate_theme_paragraph(self, one_line_theme, user_prompt=""):
-        """生成段落主题"""
+        """生成段落主题（简单版）"""
         if user_prompt is None:
             user_prompt = ""
+        
+        # 尝试使用新版提示词模板，提供默认参数
+        try:
+            prompt = self._get_prompt("theme_paragraph", user_prompt, 
+                                    one_line_theme=one_line_theme,
+                                    selected_genre="通用",
+                                    user_intent="扩展成更具体的段落主题", 
+                                    canon="")
+        except KeyError:
+            # 如果新版提示词模板失败，使用后备提示词
+            prompt = None
             
-        prompt = self._get_prompt("theme_paragraph", user_prompt, one_line_theme=one_line_theme)
         if prompt is None:
             # 后备提示词
             base_prompt = f"请将以下这个一句话小说主题，扩展成一段更加具体、包含更多情节可能性的段落大纲，字数在{GENERATION_CONFIG['theme_paragraph_length']}。请直接输出扩写后的段落，不要包含额外说明和标题。\n\n一句话主题：{one_line_theme}"
@@ -585,7 +595,61 @@ class LLMService:
             base_prompt = f"请根据以下信息生成3个不同版本的故事构想，每个版本约{GENERATION_CONFIG['theme_paragraph_length']}字，以JSON格式返回。\n\n主题：{one_line_theme}\n类型：{selected_genre}\n用户意图：{user_intent}"
             prompt = f"{base_prompt}\n\n用户额外要求：{user_prompt.strip()}" if user_prompt.strip() else base_prompt
         
-        return self._make_json_request(prompt, task_name="主题段落生成")
+        return self._make_mixed_content_request(prompt, task_name="主题段落生成")
+    
+    def _make_mixed_content_request(self, prompt, timeout=None, task_name="", with_retry=True):
+        """处理混合格式响应：正文内容 + JSON元数据"""
+        response_text = self._make_request(prompt, timeout, task_name, with_retry)
+        if response_text is None:
+            return None
+        
+        try:
+            # 尝试分离正文和JSON部分
+            # 查找JSON部分（通常在最后）
+            json_match = re.search(r'\{[^{}]*"variants"[^{}]*\[[^\]]*\][^{}]*\}', response_text, re.DOTALL)
+            if json_match:
+                json_text = json_match.group(0)
+                content_text = response_text[:json_match.start()].strip()
+                
+                # 解析JSON
+                json_data = json.loads(json_text)
+                
+                # 分离正文内容为3段
+                paragraphs = self._split_content_into_paragraphs(content_text)
+                
+                # 将内容添加到variants中
+                if 'variants' in json_data and len(paragraphs) >= len(json_data['variants']):
+                    for i, variant in enumerate(json_data['variants']):
+                        if i < len(paragraphs):
+                            variant['content'] = paragraphs[i].strip()
+                
+                return json_data
+            else:
+                # 如果没找到JSON，尝试直接解析为JSON
+                return json.loads(response_text)
+                
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"[{task_name}] 混合内容解析失败: {e}")
+            return None
+    
+    def _split_content_into_paragraphs(self, content_text: str) -> list:
+        """将正文内容分割为段落"""
+        # 移除多余的空行和空格
+        content_text = content_text.strip()
+        
+        # 按双换行符分割段落
+        paragraphs = re.split(r'\n\s*\n', content_text)
+        
+        # 过滤掉空段落和过短的段落
+        paragraphs = [p.strip() for p in paragraphs if p.strip() and len(p.strip()) > 50]
+        
+        # 如果段落少于3个，尝试按其他方式分割
+        if len(paragraphs) < 3:
+            # 尝试按句号+换行分割
+            paragraphs = re.split(r'。\s*\n', content_text)
+            paragraphs = [p.strip() + '。' if not p.endswith('。') else p.strip() for p in paragraphs if p.strip() and len(p.strip()) > 50]
+        
+        return paragraphs[:3]  # 只返回前3个段落
     
     def generate_theme_paragraph_with_genre(self, one_line_theme, selected_genre, user_intent, canon="", user_prompt=""):
         """基于类型和用户意图生成主题段落"""

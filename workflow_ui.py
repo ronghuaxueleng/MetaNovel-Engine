@@ -165,7 +165,8 @@ def generate_theme_paragraph(dm):
     
     # 直接调用同步函数
     ui.print_info("正在生成段落主题...")
-    new_theme = llm_service.generate_theme_paragraph(theme_one_line_data, user_prompt)
+    one_line_theme = theme_one_line_data.get("theme", "") if isinstance(theme_one_line_data, dict) else str(theme_one_line_data)
+    new_theme = llm_service.generate_theme_paragraph(one_line_theme, user_prompt)
 
     if new_theme:
         dm.write_theme_paragraph(new_theme)

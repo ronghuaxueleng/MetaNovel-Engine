@@ -249,7 +249,9 @@ def generate_canon_bible_interactive(dm, detailed_mode=False):
         ui.print_warning("操作已取消")
         return
         
-    audience_and_tone = ui.prompt("请输入目标读者与语域偏好（可选）", default="")
+    audience_and_tone = ui.prompt("请输入目标读者与语域偏好（可选，支持多行编辑）:", 
+                                 default="", 
+                                 multiline=True)
     
     # 详细配置模式：收集更多信息
     additional_requirements = ""
@@ -257,22 +259,25 @@ def generate_canon_bible_interactive(dm, detailed_mode=False):
         console.print("\n[cyan]详细配置选项（可选，直接回车跳过）：[/cyan]")
         
         # 语调偏好
-        tone_preference = ui.prompt("语调偏好（如：冷静克制/激情澎湃/幽默诙谐等）", default="")
+        tone_preference = ui.prompt("语调偏好（如：冷静克制/激情澎湃/幽默诙谐等）:", default="")
         
         # 视角偏好
-        pov_preference = ui.prompt("视角偏好（如：第一人称/第三人称近距/全知视角等）", default="")
+        pov_preference = ui.prompt("视角偏好（如：第一人称/第三人称近距/全知视角等）:", default="")
         
         # 节奏偏好
-        rhythm_preference = ui.prompt("节奏偏好（如：快节奏/慢热型/张弛有度等）", default="")
+        rhythm_preference = ui.prompt("节奏偏好（如：快节奏/慢热型/张弛有度等）:", default="")
         
         # 世界观设定
-        world_setting = ui.prompt("世界观特殊设定（如：未来科技/魔法体系/现实主义等）", default="")
+        world_setting = ui.prompt("世界观特殊设定（如：未来科技/魔法体系/现实主义等）:", 
+                                default="", multiline=True)
         
         # 禁用元素
-        avoid_elements = ui.prompt("想要避免的写作元素或陈词滥调", default="")
+        avoid_elements = ui.prompt("想要避免的写作元素或陈词滥调（支持多行编辑）:", 
+                                 default="", multiline=True)
         
         # 特殊要求
-        special_requirements = ui.prompt("其他特殊要求或偏好", default="")
+        special_requirements = ui.prompt("其他特殊要求或偏好（支持多行编辑）:", 
+                                       default="", multiline=True)
         
         # 组合额外要求
         additional_parts = []
@@ -508,22 +513,30 @@ def edit_canon_section(current_canon, section_name):
     
     if edit_choice == "1":
         # 直接编辑JSON
-        console.print("\n请输入新的JSON内容（输入'cancel'取消）：")
-        new_content = ui.prompt("", default=current_content)
+        console.print(f"\n[dim]正在打开编辑器编辑 {section_name}...[/dim]")
+        new_content = ui.prompt(f"请在编辑器中修改 {section_name} 的JSON内容:", 
+                               default=current_content, 
+                               multiline=True)
         
-        if new_content and new_content.lower() != 'cancel':
+        if new_content and new_content.strip() and new_content.strip().lower() != 'cancel':
             try:
-                new_data = json.loads(new_content)
+                new_data = json.loads(new_content.strip())
                 current_canon[section_key] = new_data
                 ui.print_success(f"{section_name}已更新！")
-            except json.JSONDecodeError:
-                ui.print_error("JSON格式错误，修改未保存。")
+            except json.JSONDecodeError as e:
+                ui.print_error(f"JSON格式错误，修改未保存：{e}")
+        elif new_content is None:
+            ui.print_info("编辑已取消。")
     else:
         # 描述修改要求
-        modification = ui.prompt(f"请描述您希望对{section_name}做什么修改")
-        if modification:
+        modification = ui.prompt(f"请在编辑器中详细描述您希望对{section_name}做什么修改:", 
+                               multiline=True)
+        if modification and modification.strip():
             ui.print_info("注意：描述式修改需要手动实现，当前版本暂不支持AI自动修改。")
-            ui.print_info(f"您的修改要求：{modification}")
+            ui.print_info("您的修改要求：")
+            ui.print_panel(modification.strip(), title="修改要求")
+        elif modification is None:
+            ui.print_info("编辑已取消。")
     
     ui.pause()
 
@@ -532,9 +545,14 @@ def edit_basic_info(canon_data):
     """编辑基础信息"""
     console.print("\n[cyan]修改基础信息：[/cyan]")
     
-    new_theme = ui.prompt("新的主题", default=canon_data.get('one_line_theme', ''))
-    new_genre = ui.prompt("新的体裁", default=canon_data.get('selected_genre', ''))
-    new_audience = ui.prompt("新的目标读者", default=canon_data.get('audience_and_tone', ''))
+    new_theme = ui.prompt("新的主题（可使用多行编辑）:", 
+                         default=canon_data.get('one_line_theme', ''), 
+                         multiline=True)
+    new_genre = ui.prompt("新的体裁:", 
+                         default=canon_data.get('selected_genre', ''))
+    new_audience = ui.prompt("新的目标读者和语调（可使用多行编辑）:", 
+                           default=canon_data.get('audience_and_tone', ''), 
+                           multiline=True)
     
     if new_theme: canon_data['one_line_theme'] = new_theme
     if new_genre: canon_data['selected_genre'] = new_genre

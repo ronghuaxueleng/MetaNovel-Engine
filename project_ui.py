@@ -402,7 +402,9 @@ def generate_canon_bible_for_new_project(detailed_mode=False):
         ui.print_warning("操作已取消")
         return
     
-    audience_and_tone = ui.prompt("请输入目标读者与语域偏好（可选）", default="")
+    audience_and_tone = ui.prompt("请输入目标读者与语域偏好（可选，支持多行编辑）:", 
+                                 default="", 
+                                 multiline=True)
     
     # 详细配置模式：收集更多信息
     additional_requirements = ""
@@ -410,22 +412,25 @@ def generate_canon_bible_for_new_project(detailed_mode=False):
         console.print("\n[cyan]详细配置选项（可选，直接回车跳过）：[/cyan]")
         
         # 语调偏好
-        tone_preference = ui.prompt("语调偏好（如：冷静克制/激情澎湃/幽默诙谐等）", default="")
+        tone_preference = ui.prompt("语调偏好（如：冷静克制/激情澎湃/幽默诙谐等）:", default="")
         
         # 视角偏好
-        pov_preference = ui.prompt("视角偏好（如：第一人称/第三人称近距/全知视角等）", default="")
+        pov_preference = ui.prompt("视角偏好（如：第一人称/第三人称近距/全知视角等）:", default="")
         
         # 节奏偏好
-        rhythm_preference = ui.prompt("节奏偏好（如：快节奏/慢热型/张弛有度等）", default="")
+        rhythm_preference = ui.prompt("节奏偏好（如：快节奏/慢热型/张弛有度等）:", default="")
         
         # 世界观设定
-        world_setting = ui.prompt("世界观特殊设定（如：未来科技/魔法体系/现实主义等）", default="")
+        world_setting = ui.prompt("世界观特殊设定（如：未来科技/魔法体系/现实主义等）:", 
+                                default="", multiline=True)
         
         # 禁用元素
-        avoid_elements = ui.prompt("想要避免的写作元素或陈词滥调", default="")
+        avoid_elements = ui.prompt("想要避免的写作元素或陈词滥调（支持多行编辑）:", 
+                                 default="", multiline=True)
         
         # 特殊要求
-        special_requirements = ui.prompt("其他特殊要求或偏好", default="")
+        special_requirements = ui.prompt("其他特殊要求或偏好（支持多行编辑）:", 
+                                       default="", multiline=True)
         
         # 组合额外要求
         additional_parts = []

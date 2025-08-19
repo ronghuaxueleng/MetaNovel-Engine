@@ -170,7 +170,14 @@ class EntityManager:
             ai_result = self.config.json_generator_func(llm_prompt)
         else:
             # 临时使用字符描述生成器
-            ai_response = self.config.generator_func("", llm_prompt)
+            # 获取项目上下文信息
+            from project_data_manager import project_data_manager
+            data_manager = project_data_manager.get_data_manager()
+            one_line_theme = data_manager.get_theme_one_line() or ""
+            story_context = data_manager.get_theme_paragraph() or ""
+            canon_content = data_manager.get_canon_content() or ""
+            
+            ai_response = self.config.generator_func("", llm_prompt, one_line_theme, story_context, canon_content)
             if not ai_response:
                 print("AI生成失败，请稍后重试。")
                 return

@@ -509,7 +509,7 @@ def edit_canon_section(current_canon, section_name):
     
     console.print(f"\n[yellow]提示：您可以直接修改JSON内容，或描述您想要的修改[/yellow]")
     
-    edit_choice = ui.prompt("选择编辑方式：\n1. 直接编辑JSON\n2. 描述修改要求\n请选择 (1/2)", default="2")
+    edit_choice = ui.prompt("选择编辑方式：\n1. 直接编辑JSON\n2. 描述修改要求\n请选择 (1/2)", default="1")
     
     if edit_choice == "1":
         # 直接编辑JSON

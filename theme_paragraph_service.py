@@ -90,7 +90,7 @@ class ThemeParagraphService:
         intent = ui.prompt("您的创作意图（必填）:")
         return intent.strip() if intent else ""
     
-    def generate_paragraph_variants(self, one_line_theme: str, selected_genre: str, user_intent: str) -> Optional[Dict]:
+    def generate_paragraph_variants(self, one_line_theme: str, selected_genre: str, user_intent: str, canon_content: str = "") -> Optional[Dict]:
         """生成3个版本的主题段落"""
         if not llm_service.is_available():
             ui.print_error("AI服务不可用，请检查配置。")
@@ -99,7 +99,7 @@ class ThemeParagraphService:
         try:
             # 使用新的变体生成prompt
             result = llm_service.generate_theme_paragraph_variants(
-                one_line_theme, selected_genre, user_intent
+                one_line_theme, selected_genre, user_intent, canon_content
             )
             return result
         except Exception as e:
@@ -201,11 +201,14 @@ class ThemeParagraphService:
             
             # 第四步：生成3个版本
             ui.print_info("🎨 正在生成3个版本的故事构想...")
-            variants_result = self.generate_paragraph_variants(one_line_theme, selected_genre, user_intent)
+            # 获取canon内容
+            canon_content = self.data_manager.get_canon_content()
+            variants_result = self.generate_paragraph_variants(one_line_theme, selected_genre, user_intent, canon_content)
             
             if not variants_result:
                 ui.print_error("段落生成失败，请重试。")
-                continue
+                # 修复：之前这里是continue，会导致无限循环，现在改为return False
+                return False
             
             # 第五步：用户选择版本
             while True:
@@ -217,7 +220,9 @@ class ThemeParagraphService:
                 elif selected_content == "regenerate":
                     # 重新生成
                     ui.print_info("🔄 正在重新生成...")
-                    variants_result = self.generate_paragraph_variants(one_line_theme, selected_genre, user_intent)
+                    # 获取canon内容
+                    canon_content = self.data_manager.get_canon_content()
+                    variants_result = self.generate_paragraph_variants(one_line_theme, selected_genre, user_intent, canon_content)
                     if not variants_result:
                         ui.print_error("重新生成失败。")
                         break

@@ -9,6 +9,7 @@ from openai import OpenAI, APIStatusError, AsyncOpenAI
 from openai.types.chat import ChatCompletion
 from config import API_CONFIG, AI_CONFIG, GENERATION_CONFIG, PROXY_CONFIG, validate_config
 from retry_utils import retry_manager, RetryError
+from ui_utils import ui
 
 class LLMService:
     """AI大语言模型服务类，封装所有AI交互逻辑"""
@@ -333,6 +334,82 @@ class LLMService:
         except Exception as e:
             print(f"保存修订数据时出错: {e}")
     
+    def _try_parse_json(self, response_text):
+        """尝试多种方法解析JSON"""
+        # 尝试1：直接解析JSON
+        try:
+            return json.loads(response_text)
+        except json.JSONDecodeError:
+            pass
+        
+        # 尝试2：提取被```json ... ```包裹的代码块
+        json_match = re.search(r"```json\s*(\{.*?\})\s*```", response_text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        # 尝试3：提取被```包裹的代码块（不带json标识）
+        code_match = re.search(r"```\s*(\{.*?\})\s*```", response_text, re.DOTALL)
+        if code_match:
+            try:
+                return json.loads(code_match.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        # 尝试4：提取任何花括号包裹的内容
+        bracket_match = re.search(r"\{.*\}", response_text, re.DOTALL)
+        if bracket_match:
+            try:
+                return json.loads(bracket_match.group(0))
+            except json.JSONDecodeError:
+                pass
+        
+        # 尝试5：使用fix_json_quotes修复引号问题
+        try:
+            # 定义内联的JSON修复函数，避免循环导入
+            def fix_json_quotes_inline(json_string):
+                try:
+                    return json.loads(json_string)
+                except json.JSONDecodeError:
+                    pass
+                
+                try:
+                    def fix_quotes_in_string(match):
+                        key = match.group(1)
+                        value = match.group(2)
+                        escaped_value = value.replace('"', '\\"')
+                        return f'"{key}": "{escaped_value}"'
+                    
+                    pattern = r'"([^"]+)":\s*"([^"]*(?:"[^"]*)*)"'
+                    fixed_string = re.sub(pattern, fix_quotes_in_string, json_string)
+                    return json.loads(fixed_string)
+                except (json.JSONDecodeError, re.error):
+                    pass
+                
+                return None
+            
+            return fix_json_quotes_inline(response_text)
+        except:
+            pass
+        
+        # 尝试6：Python字典格式
+        try:
+            import ast
+            return ast.literal_eval(response_text)
+        except (ValueError, SyntaxError):
+            pass
+        
+        # 尝试7：修复单引号为双引号后解析
+        try:
+            # 将单引号替换为双引号（简单处理）
+            fixed_text = response_text.replace("'", '"')
+            return json.loads(fixed_text)
+        except json.JSONDecodeError:
+            pass
+        
+        return None
     
     def _make_json_request(self, prompt, timeout=None, task_name="", with_retry=True):
         """专门用于需要JSON响应的请求（同步版本）"""
@@ -341,33 +418,20 @@ class LLMService:
             if response_text is None:
                 return None
             
-            try:
-                # 尝试直接解析JSON
-                return json.loads(response_text)
-            except json.JSONDecodeError:
-                # 尝试提取被```json ... ```包裹的代码块
-                json_match = re.search(r"```json\s*(\{.*?\})\s*```", response_text, re.DOTALL)
-                if json_match:
-                    try:
-                        return json.loads(json_match.group(1))
-                    except json.JSONDecodeError:
-                        pass
+            # 尝试多种JSON解析方法
+            parsed_result = self._try_parse_json(response_text)
+            if parsed_result is not None:
+                return parsed_result
                 
-                # 尝试提取被```包裹的代码块（不带json标识）
-                code_match = re.search(r"```\s*(\{.*?\})\s*```", response_text, re.DOTALL)
-                if code_match:
-                    try:
-                        return json.loads(code_match.group(1))
-                    except json.JSONDecodeError:
-                        pass
-                
-                # 如果还是失败，且不是最后一次尝试，发送修复请求
-                if attempt < 2:
-                    print(f"[{task_name}] JSON解析失败，尝试修复 (第{attempt + 1}次)")
-                    prompt = f"你上次返回的内容不是有效的JSON格式。请修正并返回严格的JSON格式：\n\n{response_text}\n\n请确保你的回答是严格的JSON格式，不要包含任何其他文字。"
-                else:
-                    print(f"[{task_name}] 多次尝试后仍无法解析JSON格式")
-                    return None
+            # 如果还是失败，且不是最后一次尝试，发送修复请求
+            if attempt < 2:
+                print(f"[{task_name}] JSON解析失败，尝试修复 (第{attempt + 1}次)")
+                # 改进修复请求的prompt，避免LLM困惑
+                original_prompt_type = "Canon Bible" if "canon" in task_name.lower() else "JSON数据"
+                prompt = f"请重新生成{original_prompt_type}，严格按照JSON格式返回。不要包含任何解释文字，只返回纯JSON：\n\n{prompt}"
+            else:
+                print(f"[{task_name}] 多次尝试后仍无法解析JSON格式")
+                return None
         
         return None
     
@@ -378,39 +442,26 @@ class LLMService:
             if response_text is None:
                 return None
             
-            try:
-                # 尝试直接解析JSON
-                return json.loads(response_text)
-            except json.JSONDecodeError:
-                # 尝试提取被```json ... ```包裹的代码块
-                json_match = re.search(r"```json\s*(\{.*?\})\s*```", response_text, re.DOTALL)
-                if json_match:
-                    try:
-                        return json.loads(json_match.group(1))
-                    except json.JSONDecodeError:
-                        pass
+            # 尝试多种JSON解析方法
+            parsed_result = self._try_parse_json(response_text)
+            if parsed_result is not None:
+                return parsed_result
                 
-                # 尝试提取被```包裹的代码块（不带json标识）
-                code_match = re.search(r"```\s*(\{.*?\})\s*```", response_text, re.DOTALL)
-                if code_match:
-                    try:
-                        return json.loads(code_match.group(1))
-                    except json.JSONDecodeError:
-                        pass
-                
-                # 如果还是失败，且不是最后一次尝试，发送修复请求
-                if attempt < 2:
-                    error_msg = f"[{task_name}] JSON解析失败，尝试修复 (第{attempt + 1}次)"
-                    print(error_msg)
-                    if progress_callback:
-                        progress_callback(error_msg)
-                    prompt = f"你上次返回的内容不是有效的JSON格式。请修正并返回严格的JSON格式：\n\n{response_text}\n\n请确保你的回答是严格的JSON格式，不要包含任何其他文字。"
-                else:
-                    error_msg = f"[{task_name}] 多次尝试后仍无法解析JSON格式"
-                    print(error_msg)
-                    if progress_callback:
-                        progress_callback(error_msg)
-                    return None
+            # 如果还是失败，且不是最后一次尝试，发送修复请求
+            if attempt < 2:
+                error_msg = f"[{task_name}] JSON解析失败，尝试修复 (第{attempt + 1}次)"
+                print(error_msg)
+                if progress_callback:
+                    progress_callback(error_msg)
+                # 改进修复请求的prompt，避免LLM困惑
+                original_prompt_type = "Canon Bible" if "canon" in task_name.lower() else "JSON数据"
+                prompt = f"请重新生成{original_prompt_type}，严格按照JSON格式返回。不要包含任何解释文字，只返回纯JSON：\n\n{prompt}"
+            else:
+                error_msg = f"[{task_name}] 多次尝试后仍无法解析JSON格式"
+                print(error_msg)
+                if progress_callback:
+                    progress_callback(error_msg)
+                return None
         
         return None
     
@@ -559,7 +610,7 @@ class LLMService:
         prompt = self._get_prompt("theme_analysis", user_prompt, one_line_theme=one_line_theme)
         if prompt is None:
             # 后备提示词
-            base_prompt = f"请分析以下一句话主题，并推荐3-5种最适合的作品类型（如科幻、奇幻、悬疑、情感等），以JSON格式返回。\n\n主题：{one_line_theme}"
+            base_prompt = f"请分析以下一句话主题，并推荐3-5种最适合的作品类型（如科幻、奇幻、悬疑、情感等），以JSON格式返回。\n\n主题：{one_line_theme}\n\n重要：你的回答必须是纯粹的、格式正确的JSON，不包含任何解释性文字、注释或代码块标记。"
             prompt = f"{base_prompt}\n\n用户额外要求：{user_prompt.strip()}" if user_prompt.strip() else base_prompt
         
         return self._make_json_request(prompt, task_name="主题分析")
@@ -578,7 +629,52 @@ class LLMService:
             base_prompt = f"请为以下故事创建创作规范(Canon Bible)，包括风格、节奏、视角策略、世界观等，以JSON格式返回。\n\n主题：{one_line_theme}\n类型：{selected_genre}\n目标读者：{audience_and_tone}"
             prompt = f"{base_prompt}\n\n用户额外要求：{user_prompt.strip()}" if user_prompt.strip() else base_prompt
         
-        return self._make_json_request(prompt, task_name="Canon Bible生成")
+        result = self._make_json_request(prompt, task_name="Canon Bible生成")
+        
+        # 如果JSON解析完全失败，返回一个默认的Canon Bible结构
+        if result is None:
+            print("[Canon Bible生成] 使用默认结构")
+            return {
+                "tone": {
+                    "register": "根据主题调整的语域",
+                    "rhythm": "适合体裁的节奏"
+                },
+                "pov_rules": {
+                    "default": "close-third",
+                    "allowed": ["first", "close-third"],
+                    "distance": "近距"
+                },
+                "genre_addendum": {},
+                "theme": {
+                    "thesis": one_line_theme,
+                    "antithesis": "待完善",
+                    "synthesis": "待完善"
+                },
+                "world": {
+                    "time_place": "根据主题设定",
+                    "constraints": ["现实约束待补充"]
+                },
+                "style_do": ["具体名词>形容词", "动作承载心理"],
+                "style_dont": ["空洞情绪句", "滥用比喻"],
+                "lexicon": {
+                    "key_terms": ["待补充"],
+                    "ban_phrases": ["陈词滥调"]
+                },
+                "continuity": {
+                    "timeline": [],
+                    "setups": [],
+                    "payoffs": []
+                },
+                "lengths": {
+                    "theme_paragraph": 800,
+                    "story_outline": 1200,
+                    "chapter_outline": 1200,
+                    "chapter_summary": 450,
+                    "chapter": 1800
+                }
+            }
+        
+        return result
 
     def generate_theme_paragraph_variants(self, one_line_theme, selected_genre, user_intent, canon="", user_prompt=""):
         """生成3个版本的主题段落"""

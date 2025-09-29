@@ -4,7 +4,7 @@
     "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
   },
   "theme_analysis": {
-    "base_prompt": "角色：资深文学策划编辑。\n目标：分析一句话主题并推荐最适体裁。\n语言：简体中文。\n输出：仅返回严格 JSON，不要额外说明、不要 Markdown 代码块、不要展示推理过程。\n\n原始主题：{one_line_theme}\n\n要求：\n- 给出3-5个体裁建议；\n- 说明契合理由与潜力；\n- 直面复杂议题但保持论断可证与叙事可信。\n\n返回 JSON：\n{{\n  \"recommended_genres\": [\n    {{\n      \"genre\": \"体裁\",\n      \"reason\": \"契合点（<=40字）\",\n      \"potential\": \"故事潜力（<=50字）\"\n    }}\n  ],\n  \"primary_recommendation\": \"体裁\",\n  \"reasoning\": \"主要推荐理由（<=60字）\"\n}}",
+    "base_prompt": "角色：资深文学策划编辑。\n目标：分析一句话主题并推荐最适体裁。\n语言：简体中文。\n输出：仅返回严格 JSON，不要额外说明、不要 Markdown 代码块、不要展示推理过程。\n\n原始主题：{one_line_theme}\n\n要求：\n- 给出3-5个体裁建议；\n- 说明契合理由与潜力；\n- 直面复杂议题但保持论断可证与叙事可信。\n\n重要：你的回答必须是纯粹的、格式正确的JSON，不包含任何解释性文字、注释或代码块标记。\n\n返回 JSON：\n{{\n  \"recommended_genres\": [\n    {{\n      \"genre\": \"体裁\",\n      \"reason\": \"契合点（<=40字）\",\n      \"potential\": \"故事潜力（<=50字）\"\n    }}\n  ],\n  \"primary_recommendation\": \"体裁\",\n  \"reasoning\": \"主要推荐理由（<=60字）\"\n}}",
     "user_prompt_template": "{base_prompt}\n\n特别要求：{user_prompt}"
   },
   "theme_paragraph_variants": {

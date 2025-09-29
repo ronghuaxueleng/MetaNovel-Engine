@@ -39,6 +39,14 @@ python meta_novel_cli.py
 ### 4. 开始创作
 运行程序后，选择"创建新项目"，按照7步流程开始你的小说创作之旅！
 
+## 🧭 运行环境
+
+- Python 3.8 及以上（推荐 3.11+ 获得更好的 httpx/asyncio 性能）
+- 建议使用虚拟环境：`python -m venv venv && source venv/bin/activate` 或 `. bin/activate`
+- 依赖通过 `pip install -r requirements.txt` 安装，涵盖 `openai`、`httpx`、`rich` 等组件
+- 与 OpenRouter API 通信，确保网络和代理设置可访问 `https://openrouter.ai`
+- 默认使用控制台 UI，不需要额外的浏览器或图形界面
+
 ## 📝 创作流程：7步工作流
 
 | 步骤 | 功能 | 用途 |
@@ -83,6 +91,39 @@ python meta_novel_cli.py
 - 网络代理配置
 - 智能重试设置
 
+## 🏗️ 项目结构总览
+
+- `meta_novel_cli.py`：命令行入口，负责顶层菜单与用户导航
+- `workflow_ui.py`：七步创作流程的业务逻辑与 UI 交互
+- `project_manager.py` / `project_data_manager.py`：多项目管理、配置持久化与数据管理器刷新
+- `data_manager.py`：封装 JSON 读写与缓存逻辑的统一数据访问层
+- `llm_service.py`：与 OpenRouter API 的交互、重试策略与 JSON 解析
+- `entity_manager.py`、`theme_paragraph_service.py`：实体管理及主题段落增强工作流
+
+## 📂 配置与数据存储
+
+- `.env` 存放 API Key、代理、默认模型等环境变量，可通过设置界面写回
+- 全局配置位于系统应用数据目录（如 `~/Library/Application Support/MetaNovel`），包含 `config.json` 与项目索引
+- 每个项目的数据都保存在 `<项目目录>/meta/` 下的 JSON 文件，并在 `meta_backup/` 中维护备份
+- `prompts.json` 支持按项目覆盖；切换项目时会自动刷新 LLM 提示词缓存
+- 导出内容默认写入 `exports/`，可在系统设置里改为自定义目录
+
+## 🛡️ 稳健性与容错设计
+
+- API 请求统一走 `retry_utils`，提供指数退避、抖动和批量重试
+- LLM 返回的 JSON 采用多层兜底解析（代码块提取、引号修复、`ast.literal_eval` 等）
+- Canon Bible 生成失败时会回退到默认骨架，确保流程不中断
+- 项目配置在读写前后自动补全必需字段，避免手工编辑造成崩溃
+- 实体生成会优先解析用户输入的名称，确保 LLM 输出与存储保持一致
+
+## 🧪 测试与开发
+
+- 激活虚拟环境：`. bin/activate`
+- 运行单个测试：`python -m pytest tests/test_entity_manager.py`
+- 全量测试：`python -m pytest tests`
+- 开发过程中建议随手执行 `git status`，避免把临时导出或备份文件提交进仓库
+- 调试 API 请求时可在 `.env` 中调整模型或代理设置
+
 ## 🆘 常见问题
 
 **Q: 需要什么API密钥？如何获取？**
@@ -108,6 +149,14 @@ A: 在主菜单选择"项目管理"，可以创建、切换、编辑或删除项
 **Q: 如何导出我的小说？**
 
 A: 在项目工作台选择"导出小说"，支持导出单章节、章节范围或完整小说，导出文件包含标准元数据和精确字数统计。
+
+## ⚠️ 注意事项与限制
+
+- 长对话或大段 Canon Bible 生成仍可能触发速率限制，可在设置里调整重试参数
+- JSON 数据直接保存在磁盘，建议定期备份项目目录或纳入版本控制
+- 目前仅提供命令行 UI，若需 GUI 可基于 `export_ui.py`、`workbench_ui.py` 扩展
+- 生成内容需配合人工审校与命名规范，以确保世界观的一致性
+- 建议在稳定的网络环境下切换项目，等待提示词加载完成再进行下一步
 
 ## 📄 开源协议
 

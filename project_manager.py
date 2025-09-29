@@ -40,6 +40,26 @@ class ProjectManager:
         
         # 初始化配置
         self._init_config()
+
+    def _default_config(self) -> Dict[str, Any]:
+        """返回默认的全局配置结构。"""
+        return {
+            "version": "1.0",
+            "active_project": None,
+            "projects": {},
+            "created_at": datetime.now().isoformat()
+        }
+
+    def _ensure_config_structure(self, config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """确保配置字典包含必要的键，避免KeyError。"""
+        if not isinstance(config, dict):
+            return self._default_config()
+
+        config.setdefault("version", "1.0")
+        config.setdefault("active_project", None)
+        config.setdefault("projects", {})
+        config.setdefault("created_at", datetime.now().isoformat())
+        return config
     
     def _ensure_directories(self):
         """确保必要的目录存在"""
@@ -49,28 +69,26 @@ class ProjectManager:
     def _init_config(self):
         """初始化全局配置文件"""
         if not self.config_file.exists():
-            default_config = {
-                "version": "1.0",
-                "active_project": None,
-                "projects": {},
-                "created_at": datetime.now().isoformat()
-            }
-            self._save_config(default_config)
+            self._save_config(self._default_config())
     
     def _load_config(self) -> Dict[str, Any]:
         """加载全局配置"""
         try:
             with self.config_file.open('r', encoding='utf-8') as f:
-                return json.load(f)
+                loaded = json.load(f)
+                return self._ensure_config_structure(loaded)
         except (json.JSONDecodeError, IOError) as e:
             ui.print_error(f"加载配置文件时出错: {e}")
-            return {}
+            fallback = self._default_config()
+            self._save_config(fallback)
+            return fallback
     
     def _save_config(self, config: Dict[str, Any]) -> bool:
         """保存全局配置"""
         try:
+            normalized = self._ensure_config_structure(config)
             with self.config_file.open('w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=4)
+                json.dump(normalized, f, ensure_ascii=False, indent=4)
             return True
         except IOError as e:
             ui.print_error(f"保存配置文件时出错: {e}")

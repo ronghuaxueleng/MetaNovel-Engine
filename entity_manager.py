@@ -10,6 +10,23 @@ from project_data_manager import project_data_manager
 from llm_service import llm_service
 
 
+def _extract_entity_name(raw_input: str) -> str:
+    """Best-effort extraction of an entity name from user-provided text."""
+    if not raw_input:
+        return ""
+    # Try basic JSON-like patterns first.
+    import re
+    name_match = re.search(r'"name"\s*:\s*"([^"]+)"', raw_input)
+    if name_match:
+        return name_match.group(1).strip()
+    # Fallback: take first comma/colon separated token.
+    parts = re.split(r'[,:\n]', raw_input, maxsplit=1)
+    if parts:
+        candidate = parts[0].strip().strip('"')
+        return candidate
+    return raw_input.strip()
+
+
 class EntityConfig:
     """实体配置类，定义不同实体的配置信息"""
     
@@ -149,6 +166,7 @@ class EntityManager:
             return
         
         user_input = user_input.strip()
+        entity_display_name = _extract_entity_name(user_input)
         
         # 构造给LLM的提示词，让LLM自己解析输入并返回标准格式
         llm_prompt = f"""用户想要创建一个{self.config.name}，提供的信息如下：
@@ -173,11 +191,20 @@ class EntityManager:
             # 获取项目上下文信息
             from project_data_manager import project_data_manager
             data_manager = project_data_manager.get_data_manager()
-            one_line_theme = data_manager.get_theme_one_line() or ""
-            story_context = data_manager.get_theme_paragraph() or ""
+            theme_data = data_manager.read_theme_one_line()
+            if isinstance(theme_data, dict):
+                one_line_theme = theme_data.get("theme", "")
+            else:
+                one_line_theme = theme_data or ""
+            story_context = data_manager.read_theme_paragraph() or ""
             canon_content = data_manager.get_canon_content() or ""
-            
-            ai_response = self.config.generator_func("", llm_prompt, one_line_theme, story_context, canon_content)
+            ai_response = self.config.generator_func(
+                entity_display_name,
+                llm_prompt,
+                one_line_theme,
+                story_context,
+                canon_content
+            )
             if not ai_response:
                 print("AI生成失败，请稍后重试。")
                 return
@@ -191,12 +218,10 @@ class EntityManager:
                 if json_match:
                     ai_result = json.loads(json_match.group(0))
                 else:
-                    # 如果没有找到JSON，使用原始输入作为名称
-                    entity_name = user_input.split(',')[0].strip().strip('"').split(':')[-1].strip()
+                    entity_name = entity_display_name or _extract_entity_name(user_input)
                     ai_result = {"name": entity_name, "description": ai_response}
             except:
-                # JSON解析失败，使用原始输入作为名称
-                entity_name = user_input.split(',')[0].strip().strip('"').split(':')[-1].strip()
+                entity_name = entity_display_name or _extract_entity_name(user_input)
                 ai_result = {"name": entity_name, "description": ai_response}
         
         if not ai_result:
@@ -204,7 +229,7 @@ class EntityManager:
             return
         
         # 提取角色名称和描述
-        entity_name = ai_result.get("name", "未知").strip()
+        entity_name = (ai_result.get("name") or entity_display_name or _extract_entity_name(user_input) or "未知").strip()
         generated_description = ai_result.get("description", "").strip()
         
         if not entity_name or not generated_description:

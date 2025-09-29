@@ -14,9 +14,11 @@ from project_data_manager import project_data_manager
 
 class ThemeParagraphService:
     """主题段落服务类"""
-    
-    def __init__(self):
-        self.data_manager = project_data_manager.get_data_manager()
+
+    @staticmethod
+    def _get_data_manager():
+        """Always return the latest project-scoped data manager."""
+        return project_data_manager.get_data_manager()
     
     def analyze_theme_and_get_genres(self, one_line_theme: str) -> Optional[Dict]:
         """分析主题并获取推荐的作品类型"""
@@ -156,7 +158,8 @@ class ThemeParagraphService:
     def save_selected_paragraph(self, paragraph_content: str) -> bool:
         """保存选中的段落"""
         try:
-            self.data_manager.write_theme_paragraph(paragraph_content)
+            data_manager = self._get_data_manager()
+            data_manager.write_theme_paragraph(paragraph_content)
             return True
         except Exception as e:
             ui.print_error(f"保存失败: {e}")
@@ -201,8 +204,7 @@ class ThemeParagraphService:
             
             # 第四步：生成3个版本
             ui.print_info("🎨 正在生成3个版本的故事构想...")
-            # 获取canon内容
-            canon_content = self.data_manager.get_canon_content()
+            canon_content = self._get_data_manager().get_canon_content()
             variants_result = self.generate_paragraph_variants(one_line_theme, selected_genre, user_intent, canon_content)
             
             if not variants_result:
@@ -220,8 +222,7 @@ class ThemeParagraphService:
                 elif selected_content == "regenerate":
                     # 重新生成
                     ui.print_info("🔄 正在重新生成...")
-                    # 获取canon内容
-                    canon_content = self.data_manager.get_canon_content()
+                    canon_content = self._get_data_manager().get_canon_content()
                     variants_result = self.generate_paragraph_variants(one_line_theme, selected_genre, user_intent, canon_content)
                     if not variants_result:
                         ui.print_error("重新生成失败。")

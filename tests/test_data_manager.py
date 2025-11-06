@@ -2,6 +2,7 @@
 Unit tests for data_manager module
 """
 
+import json
 import unittest
 import tempfile
 import shutil
@@ -14,6 +15,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data_manager import DataManager
+import data_manager as data_manager_module
 from project_manager import ProjectManager
 # We import the global instance to be patched
 import project_data_manager as pdm_module
@@ -86,6 +88,59 @@ class TestDataManager(unittest.TestCase):
         self.data_manager.delete_character(char_name)
         final_characters = self.data_manager.read_characters()
         self.assertNotIn(char_name, final_characters)
+
+    def test_json_cache_hits_without_disk_reload(self):
+        """重复读取同一文件时应命中缓存，避免重复磁盘读取"""
+        characters_path = self.data_manager.file_paths["characters"]
+        characters_path.parent.mkdir(parents=True, exist_ok=True)
+        with characters_path.open("w", encoding="utf-8") as f:
+            json.dump({"测试角色": {"description": "缓存测试"}}, f, ensure_ascii=False)
+
+        # 使用全新实例确保缓存初始为空
+        dm = DataManager(self.data_manager.project_path)
+
+        original_load = data_manager_module.json.load
+        load_counter = {"count": 0}
+
+        def counting_load(*args, **kwargs):
+            load_counter["count"] += 1
+            return original_load(*args, **kwargs)
+
+        with patch.object(data_manager_module.json, "load", side_effect=counting_load):
+            first_read = dm.read_characters()
+            second_read = dm.read_characters()
+
+        self.assertEqual(load_counter["count"], 1, "缓存命中后不应再次触发 json.load")
+        self.assertEqual(first_read, second_read)
+        self.assertIn("测试角色", second_read)
+
+    def test_json_cache_returns_copy(self):
+        """读取结果应为副本，外部修改不会污染缓存"""
+        self.data_manager.add_character("缓存角色", "原始描述")
+        first_read = self.data_manager.read_characters()
+        first_read["缓存角色"]["description"] = "被外部篡改"
+
+        second_read = self.data_manager.read_characters()
+
+        self.assertEqual(
+            second_read["缓存角色"]["description"],
+            "原始描述",
+            "修改读取结果不应影响缓存中的数据"
+        )
+
+    def test_json_cache_invalidates_on_write(self):
+        """写入后缓存应立即反映最新数据"""
+        self.data_manager.add_character("缓存更新角色", "第一次描述")
+        _ = self.data_manager.read_characters()
+
+        self.data_manager.update_character("缓存更新角色", "第二次描述")
+        updated_read = self.data_manager.read_characters()
+
+        self.assertEqual(
+            updated_read["缓存更新角色"]["description"],
+            "第二次描述",
+            "写入后缓存必须刷新以返回最新数据"
+        )
 
 if __name__ == '__main__':
     unittest.main()

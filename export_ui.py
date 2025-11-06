@@ -1,5 +1,8 @@
 import os
+import json
+import re
 import datetime
+from typing import Dict
 from ui_utils import ui
 from project_data_manager import project_data_manager
 from config import get_export_base_dir
@@ -25,6 +28,62 @@ def get_export_dir():
         export_dir = "exports"
         os.makedirs(export_dir, exist_ok=True)
         return export_dir
+
+_METADATA_KEYS = {
+    "patch_log",
+    "chapter_no",
+    "pov",
+    "value_shift",
+    "setups",
+    "payoffs",
+    "canon_alignment",
+    "scores",
+    "variants",
+    "multi_use_features",
+    "hazards",
+    "symbolism",
+    "uses",
+    "secrets",
+    "tells",
+    "exploitable_flaws",
+    "value_axis"
+}
+
+def _strip_trailing_metadata(content: str) -> str:
+    """移除正文末尾附带的 JSON 元数据（如 patch_log）。"""
+    if not content:
+        return content or ""
+
+    stripped = content.rstrip()
+    while True:
+        match = re.search(r'\n\{[\s\S]*\}\s*$', stripped)
+        if not match:
+            break
+
+        candidate = stripped[match.start():].lstrip()
+        if not candidate.startswith("{"):
+            break
+
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            break
+
+        if isinstance(parsed, Dict) and any(key in parsed for key in _METADATA_KEYS):
+            stripped = stripped[:match.start()].rstrip()
+            continue
+        break
+
+    return stripped
+
+def _get_clean_chapter_content(chapter_data: Dict) -> str:
+    """获取清理后的章节正文内容。"""
+    raw_content = chapter_data.get('content', '') or ""
+    return _strip_trailing_metadata(raw_content)
+
+def _compute_word_count(content: str) -> int:
+    """计算正文字数（忽略空格、换行和制表符）。"""
+    return len(content.replace(' ', '').replace('\n', '').replace('\t', ''))
 
 def handle_novel_export():
     """Main UI handler for exporting the novel."""
@@ -73,7 +132,7 @@ def export_single_chapter(chapters, novel_chapters):
         
         export_dir = get_export_dir()
         chapter_data = novel_chapters.get(chapter_key, {})
-        content = chapter_data.get('content', '')
+        clean_content = _get_clean_chapter_content(chapter_data)
         title = chapter_data.get('title', selected_title)
         
         novel_name = get_novel_name()
@@ -82,9 +141,7 @@ def export_single_chapter(chapters, novel_chapters):
         display_timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         
         # 使用已有的字数数据，如果没有则重新计算
-        word_count = chapter_data.get('word_count', 0)
-        if word_count == 0:
-            word_count = len(content.replace(' ', '').replace('\n', '').replace('\t', ''))
+        word_count = _compute_word_count(clean_content)
         
         filename = f"{novel_name}_{title}_{timestamp_str}.txt"
         
@@ -104,8 +161,8 @@ def export_single_chapter(chapters, novel_chapters):
                 f.write(f"第{chapter_num}章 {title}\n")
                 f.write("=" * 30 + "\n\n")
                 
-                # 写入正文内容
-                f.write(content)
+                # 写入正文内容（移除附加的JSON元数据）
+                f.write(clean_content)
                 
                 # 添加AI生成作品说明
                 f.write("\n\n" + "=" * 30 + "\n")
@@ -187,14 +244,12 @@ def export_chapter_range(chapters, novel_chapters):
         # 使用已有的字数数据计算总字数和生成章节列表
         total_word_count = 0
         chapter_titles = []
+        clean_contents = {}
         for key, title in selected_chapters:
             chapter_data = novel_chapters[key]
-            # 使用已有的字数数据，如果没有则重新计算
-            word_count = chapter_data.get('word_count', 0)
-            if word_count == 0:
-                content = chapter_data.get('content', '')
-                word_count = len(content.replace(' ', '').replace('\n', '').replace('\t', ''))
-            total_word_count += word_count
+            clean_content = _get_clean_chapter_content(chapter_data)
+            clean_contents[key] = clean_content
+            total_word_count += _compute_word_count(clean_content)
             chapter_titles.append(title)
         
         chapters_str = "、".join(chapter_titles)
@@ -229,7 +284,10 @@ def export_chapter_range(chapters, novel_chapters):
                 chapter_num = int(key.split('_')[1])
                 f.write(f"第{chapter_num}章 {title}\n")
                 f.write("=" * 30 + "\n\n")
-                f.write(chapter_data.get('content', ''))
+                clean_content = clean_contents.get(key)
+                if clean_content is None:
+                    clean_content = _get_clean_chapter_content(chapter_data)
+                f.write(clean_content)
                 f.write("\n\n---\n\n")
             
             # 添加AI生成作品说明
@@ -262,14 +320,12 @@ def export_complete_novel(chapters, novel_chapters):
     total_word_count = 0
     sorted_keys = sorted(novel_chapters.keys(), key=lambda k: int(k.split('_')[1]))
     chapter_titles = []
+    clean_contents = {}
     for key in sorted_keys:
         chapter_data = novel_chapters[key]
-        # 使用已有的字数数据，如果没有则重新计算
-        word_count = chapter_data.get('word_count', 0)
-        if word_count == 0:
-            content = chapter_data.get('content', '')
-            word_count = len(content.replace(' ', '').replace('\n', '').replace('\t', ''))
-        total_word_count += word_count
+        clean_content = _get_clean_chapter_content(chapter_data)
+        clean_contents[key] = clean_content
+        total_word_count += _compute_word_count(clean_content)
         chapter_titles.append(chapter_data.get('title', '无标题'))
     
     # 生成章节列表字符串（包含章节号）
@@ -299,7 +355,10 @@ def export_complete_novel(chapters, novel_chapters):
                 chapter_title = chapter_data.get('title', '无标题')
                 f.write(f"第{chapter_num}章 {chapter_title}\n")
                 f.write("=" * 30 + "\n\n")
-                f.write(chapter_data.get('content', ''))
+                clean_content = clean_contents.get(key)
+                if clean_content is None:
+                    clean_content = _get_clean_chapter_content(chapter_data)
+                f.write(clean_content)
                 f.write("\n\n---\n\n")
             
             # 添加AI生成作品说明

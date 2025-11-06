@@ -1,7 +1,6 @@
 from ui_utils import ui, console
 from project_data_manager import project_data_manager
 from workflow_ui import handle_creative_workflow
-from export_ui import handle_novel_export
 from project_manager import project_manager
 from rich.panel import Panel
 from datetime import datetime
@@ -60,7 +59,6 @@ def show_workbench():
                 "开始 / 继续创作",
                 "查看项目概览",
                 "管理Canon Bible（创作规范）",
-                "导出小说",
                 "返回项目管理"
             ]
             
@@ -72,8 +70,6 @@ def show_workbench():
                 show_project_overview()
             elif choice == '3':
                 handle_canon_bible_management()
-            elif choice == '4':
-                handle_novel_export()
             elif choice == '0':
                 break
     

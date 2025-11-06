@@ -6,6 +6,7 @@ from project_data_manager import project_data_manager
 from progress_utils import AsyncProgressManager, run_with_progress
 from retry_utils import batch_retry_manager
 from entity_manager import handle_characters, handle_locations, handle_items
+from export_ui import handle_novel_export
 from ui_utils import ui, console
 from rich.panel import Panel
 from rich.text import Text
@@ -776,7 +777,15 @@ def handle_novel_generation():
         status = f"已生成 {completed_count}/{total_count} 章"
         ui.print_info(f"\n当前小说正文状态: {status}")
 
-        options = ["查看章节正文", "批量生成未完成章节", "生成/重新生成单个章节", "手动编辑章节正文", "删除单个章节", "返回"]
+        options = [
+            "查看章节正文",
+            "批量生成未完成章节",
+            "生成/重新生成单个章节",
+            "手动编辑章节正文",
+            "删除单个章节",
+            "导出小说",
+            "返回"
+        ]
         action = ui.display_menu("小说正文生成管理:", options)
 
         if action == "1":
@@ -789,6 +798,8 @@ def handle_novel_generation():
             edit_novel_chapter(dm, chapters, novel_chapters)
         elif action == "5":
             delete_novel_chapter(dm, chapters, novel_chapters)
+        elif action == "6":
+            handle_novel_export()
         elif action == "0":
             break
 

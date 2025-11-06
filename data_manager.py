@@ -1,8 +1,10 @@
+import copy
 import json
+import threading
 from pathlib import Path
 from config import FILE_PATHS, ensure_directories, get_project_paths
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import time
 
 class DataManager:
@@ -23,6 +25,11 @@ class DataManager:
         self._status_cache = None
         self._status_cache_time = None
         self._cache_ttl = 2  # 缓存2秒
+        
+        # JSON读取缓存（按文件路径缓存）
+        self._cache_lock = threading.Lock()
+        self._json_cache: Dict[Path, Any] = {}
+        self._json_cache_time: Dict[Path, float] = {}
     
     def _clear_status_cache(self):
         """清除状态缓存"""
@@ -35,14 +42,22 @@ class DataManager:
     
     def read_json_file(self, file_path):
         """读取JSON文件"""
+        cached = self._get_cached_json(file_path)
+        if cached is not None:
+            return cached
+
         try:
             if file_path.exists():
                 with file_path.open('r', encoding='utf-8') as f:
-                    return json.load(f)
-            return {}
-        except (json.JSONDecodeError, IOError) as e:
+                    data = json.load(f)
+            else:
+                data = {}
+        except (json.JSONDecodeError, IOError):
             # 静默处理文件读取错误，避免在启动时显示错误信息
-            return {}
+            data = {}
+
+        self._set_cached_json(file_path, data)
+        return copy.deepcopy(data)
     
     def write_json_file(self, file_path, data):
         """写入JSON文件"""
@@ -50,6 +65,7 @@ class DataManager:
             with file_path.open('w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
             # 清除缓存，因为数据可能已更改
+            self._set_cached_json(file_path, data)
             self._clear_status_cache()
             return True
         except IOError as e:
@@ -514,6 +530,25 @@ class DataManager:
         self._status_cache_time = current_time
         
         return status
+
+    def _get_cached_json(self, file_path: Path):
+        """获取指定文件的缓存数据（深拷贝）"""
+        with self._cache_lock:
+            cached = self._json_cache.get(file_path)
+            timestamp = self._json_cache_time.get(file_path)
+            if cached is None or timestamp is None:
+                return None
+            if time.time() - timestamp >= self._cache_ttl:
+                self._json_cache.pop(file_path, None)
+                self._json_cache_time.pop(file_path, None)
+                return None
+            return copy.deepcopy(cached)
+
+    def _set_cached_json(self, file_path: Path, data: Any):
+        """缓存指定文件的数据（存储副本以避免被外部修改）"""
+        with self._cache_lock:
+            self._json_cache[file_path] = copy.deepcopy(data)
+            self._json_cache_time[file_path] = time.time()
     
     def _calculate_project_status_details(self) -> Dict[str, Dict]:
         """计算项目各阶段的详细完成状态"""

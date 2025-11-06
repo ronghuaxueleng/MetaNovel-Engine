@@ -2,17 +2,6 @@
 UI工具模块 - 使用Rich库美化命令行界面
 """
 
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
-from rich.markdown import Markdown
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
-from rich.prompt import Prompt, Confirm
-from rich.syntax import Syntax
-from rich.tree import Tree
-from rich.columns import Columns
-from rich.align import Align
 from typing import List, Dict, Any, Optional
 import json
 import sys
@@ -20,6 +9,161 @@ import os
 import subprocess
 import tempfile
 import shutil
+
+try:
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
+    from rich.text import Text
+    from rich.markdown import Markdown
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+    from rich.prompt import Prompt, Confirm
+    from rich.syntax import Syntax
+    from rich.tree import Tree
+    from rich.columns import Columns
+    from rich.align import Align
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
+    class Console:
+        """简化版控制台，保证在缺少 rich 时程序仍可运行"""
+        def __init__(self):
+            self.width = shutil.get_terminal_size((80, 24)).columns
+
+        def print(self, *args, **kwargs):
+            text = " ".join(str(arg) for arg in args)
+            print(text)
+
+        def clear(self):
+            try:
+                os.system("cls" if os.name == "nt" else "clear")
+            except Exception:
+                pass
+
+        def input(self, prompt=""):
+            return input(prompt)
+
+    class _BaseRenderable:
+        def __str__(self):
+            return getattr(self, "text", "")
+
+        def __repr__(self):
+            return str(self)
+
+    class Text(_BaseRenderable):
+        def __init__(self, text="", style=None, justify=None):
+            self.text = str(text)
+
+        def stylize(self, *_args, **_kwargs):
+            return self
+
+        @classmethod
+        def from_markup(cls, text):
+            return cls(text)
+
+        def join(self, renderables):
+            joined = str(self).join(str(r) for r in renderables)
+            return Text(joined)
+
+    class Panel(_BaseRenderable):
+        def __init__(self, content, title="", style=""):
+            self.text = f"{title} {content}" if title else str(content)
+
+    class Markdown(_BaseRenderable):
+        def __init__(self, content):
+            self.text = str(content)
+
+    class Syntax(_BaseRenderable):
+        def __init__(self, content, *_args, **_kwargs):
+            self.text = str(content)
+
+    class Table:
+        def __init__(self, title="", show_header=True, header_style=None):
+            self.title = title
+            self.columns = []
+            self.rows = []
+
+        def add_column(self, column, style=None, no_wrap=True):
+            self.columns.append(str(column))
+
+        def add_row(self, *values):
+            self.rows.append(tuple(str(v) for v in values))
+
+        def __str__(self):
+            lines = []
+            if self.title:
+                lines.append(self.title)
+            if self.columns:
+                header = " | ".join(self.columns)
+                lines.append(header)
+                lines.append("-" * len(header))
+            for row in self.rows:
+                lines.append(" | ".join(row))
+            return "\n".join(lines)
+
+    class Columns(list):
+        pass
+
+    class Tree(_BaseRenderable):
+        pass
+
+    class Align:
+        @staticmethod
+        def center(content):
+            return content
+
+    class SpinnerColumn:
+        pass
+
+    class TextColumn:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+    class BarColumn:
+        pass
+
+    class TaskProgressColumn:
+        pass
+
+    class Progress:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def add_task(self, description, total=1):
+            return 0
+
+        def update(self, task_id, advance=1, description=None):
+            pass
+
+    class Prompt:
+        @staticmethod
+        def ask(message, default=None, choices=None, show_choices=True, show_default=True):
+            prompt_parts = [str(message)]
+            if choices and show_choices:
+                prompt_parts.append(f"选项: {', '.join(choices)}")
+            if default is not None and show_default:
+                prompt_parts.append(f"默认: {default}")
+            prompt_text = " ".join(prompt_parts) + "\n> "
+            response = input(prompt_text).strip()
+            if not response and default is not None:
+                response = default
+            return response
+
+    class Confirm:
+        @staticmethod
+        def ask(message, default=True):
+            suffix = "[Y/n]" if default else "[y/N]"
+            response = input(f"{message} {suffix} ").strip().lower()
+            if not response:
+                return default
+            return response in {"y", "yes"}
 
 # 创建全局console实例
 console = Console()

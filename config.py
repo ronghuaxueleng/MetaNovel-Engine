@@ -1,8 +1,71 @@
 import os
 import platform
 from pathlib import Path
-from dotenv import load_dotenv, set_key, find_dotenv
 from typing import Dict, Optional
+
+try:
+    from dotenv import load_dotenv, set_key, find_dotenv  # type: ignore
+except ImportError:
+    def find_dotenv(*args, **kwargs):
+        """
+        Fallback for python-dotenv's find_dotenv.
+        只在当前工作目录查找 .env 文件。
+        """
+        candidate = Path(os.getcwd()) / ".env"
+        return str(candidate) if candidate.exists() else ""
+
+    def load_dotenv(dotenv_path: Optional[str] = None, *args, **kwargs):
+        """
+        简化版 load_dotenv，若找到 .env 则读取键值对写入环境变量。
+        """
+        target = Path(dotenv_path) if dotenv_path else Path(find_dotenv())
+        if not target or not target.exists():
+            return False
+
+        try:
+            with target.open("r", encoding="utf-8") as env_file:
+                for line in env_file:
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith("#") or "=" not in stripped:
+                        continue
+                    key, value = stripped.split("=", 1)
+                    os.environ.setdefault(key.strip(), value.strip())
+            return True
+        except OSError:
+            return False
+
+    def set_key(dotenv_path: str, key: str, value: str, *args, **kwargs):
+        """
+        简化版 set_key，若 python-dotenv 不可用则手动更新 .env。
+        """
+        path = Path(dotenv_path)
+        try:
+            if not path.exists():
+                path.touch()
+
+            with path.open("r", encoding="utf-8") as env_file:
+                lines = env_file.read().splitlines()
+
+            updated = False
+            new_lines = []
+            for line in lines:
+                if line.startswith(f"{key}="):
+                    new_lines.append(f"{key}={value}")
+                    updated = True
+                else:
+                    new_lines.append(line)
+
+            if not updated:
+                new_lines.append(f"{key}={value}")
+
+            with path.open("w", encoding="utf-8") as env_file:
+                env_file.write("\n".join(new_lines) + ("\n" if new_lines else ""))
+
+            os.environ[key] = value
+            return key, value
+        except OSError as exc:
+            print(f"更新.env文件时出错: {exc}")
+            return key, None
 
 # --- .env 文件处理 ---
 # 查找.env文件，如果不存在则在项目根目录创建一个

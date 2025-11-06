@@ -5,8 +5,6 @@
 import signal
 import sys
 from ui_utils import ui, console
-from rich.panel import Panel
-from rich.text import Text
 
 class GracefulExit:
     """优雅退出处理器"""

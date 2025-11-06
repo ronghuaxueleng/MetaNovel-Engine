@@ -402,9 +402,7 @@ def generate_canon_bible_for_new_project(detailed_mode=False):
         ui.print_warning("操作已取消")
         return
     
-    audience_and_tone = ui.prompt("请输入目标读者与语域偏好（可选，支持多行编辑）:", 
-                                 default="", 
-                                 multiline=True)
+    audience_and_tone = ui.prompt("请输入目标读者与语域偏好（可选）:", default="")
     
     # 详细配置模式：收集更多信息
     additional_requirements = ""
